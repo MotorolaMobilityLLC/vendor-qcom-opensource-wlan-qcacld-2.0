@@ -252,6 +252,7 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 /* 7 is unused */
 #define WE_GET_SAP_AUTO_CHANNEL_SELECTION 8
 #define WE_GET_CONCURRENCY_MODE 9
+#define WE_GET_MCC_MODE 10 /* MOTOROLA IKJB42MAIN-274 */
 #define WE_GET_NSS           11
 #define WE_GET_LDPC          12
 #define WE_GET_TX_STBC       13
@@ -6179,6 +6180,13 @@ static int iw_setnone_getint(struct net_device *dev, struct iw_request_info *inf
            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO, ("concurrency mode=%d"),*value);
            break;
         }
+        // BEGIN MOTOROLA IKJB42MAIN-274, dpn473, 01/02/2013, Add flag to disable/enable MCC mode
+        case WE_GET_MCC_MODE:
+        {
+            *value = (int)hdd_get_mcc_mode();
+            break;
+        }
+        // IKJB42MAIN-274
 
         case WE_GET_NSS:
         {
@@ -10130,6 +10138,12 @@ static const struct iw_priv_args we_private_args[] = {
         0,
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
         "getconcurrency" },
+
+    /* MOTOROLA IKJB42MAIN-274 */
+    {   WE_GET_MCC_MODE,
+         0,
+         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
+         "getMccMode" },
 
     {   WE_GET_NSS,
         0,
