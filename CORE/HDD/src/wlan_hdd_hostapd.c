@@ -2834,7 +2834,7 @@ static __iw_softap_setparam(struct net_device *dev,
 {
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
     tHalHandle hHal;
-    int *value = (int *)extra;
+    int *value = (int *)(wrqu->data.pointer);
     int sub_cmd = value[0];
     int set_value = value[1];
     eHalStatus status;
@@ -3893,7 +3893,7 @@ int __iw_softap_modify_acl(struct net_device *dev, struct iw_request_info *info,
 #ifndef WLAN_FEATURE_MBSSID
     v_CONTEXT_t pVosContext = hdd_ctx->pvosContext;
 #endif
-    v_BYTE_t *value = (v_BYTE_t*)extra;
+    v_BYTE_t *value = (v_BYTE_t*)(wrqu->data.pointer);
     v_U8_t pPeerStaMac[VOS_MAC_ADDR_SIZE];
     int listType, cmd, i;
     int ret;
@@ -4267,7 +4267,7 @@ static __iw_softap_disassoc_sta(struct net_device *dev,
     /* iwpriv tool or framework calls this ioctl with
      * data passed in extra (less than 16 octets);
      */
-    peerMacAddr = (v_U8_t *)(extra);
+    peerMacAddr = (v_U8_t *)(wrqu->data.pointer);
 
     hddLog(LOG1, "%s data "  MAC_ADDRESS_STR,
            __func__, MAC_ADDR_ARRAY(peerMacAddr));
