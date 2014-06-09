@@ -16097,10 +16097,18 @@ static VOS_STATUS wma_pno_start(tp_wma_handle wma, tpSirPNOScanReq pno)
 
 	/* Copy scan interval */
 	if (pno->scanTimers.ucScanTimersCount) {
+        //BEGIN MOT a19110 IKDREL3KK-2175 PNO Enhancement
 		cmd->fast_scan_period =
-		   WMA_SEC_TO_MSEC(pno->scanTimers.aTimerValues[0].uTimerValue);
-		cmd->slow_scan_period = cmd->fast_scan_period;
-		WMA_LOGD("Scan period : %d msec", cmd->slow_scan_period);
+			WMA_SEC_TO_MSEC(pno->scanTimers.aTimerValues[0].uTimerValue);
+		WMA_LOGD("Fast Scan period : %d msec", cmd->fast_scan_period);
+
+		cmd->fast_scan_max_cycles = pno->scanTimers.aTimerValues[0].uTimerRepeat;
+		WMA_LOGD("Fast Scan cycle : %d", cmd->fast_scan_max_cycles);
+
+		cmd->slow_scan_period =
+			WMA_SEC_TO_MSEC(pno->scanTimers.aTimerValues[1].uTimerValue);
+		WMA_LOGD("Slow Scan period : %d msec", cmd->slow_scan_period);
+        //END IKDREL3KK-2175
 	}
 
 	buf_ptr += sizeof(wmi_nlo_config_cmd_fixed_param);

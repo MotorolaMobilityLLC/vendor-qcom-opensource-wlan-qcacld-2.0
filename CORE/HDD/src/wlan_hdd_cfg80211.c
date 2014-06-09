@@ -12832,7 +12832,7 @@ static int __wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
     tpSirPNOScanReq pPnoRequest = NULL;
     hdd_context_t *pHddCtx;
     tHalHandle hHal;
-    v_U32_t i, indx, num_ch, tempInterval, j;
+    v_U32_t i, indx, num_ch, j;
     u8 valid_ch[WNI_CFG_VALID_CHANNEL_LIST_LEN] = {0};
     u8 channels_allowed[WNI_CFG_VALID_CHANNEL_LIST_LEN] = {0};
     v_U32_t num_channels_allowed = WNI_CFG_VALID_CHANNEL_LIST_LEN;
@@ -13018,7 +13018,8 @@ static int __wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
         memcpy(&pPnoRequest->p5GProbeTemplate, request->ie,
                 pPnoRequest->us5GProbeTemplateLen);
     }
-
+    //BEGIN MOT a19110 IKDREL3KK-2175 PNO enhancement
+#if 0
     /* Driver gets only one time interval which is hard coded in
      * supplicant for 10000ms. Taking power consumption into account 6 timers
      * will be used, Timer value is increased exponentially i.e 10,20,40,
@@ -13047,6 +13048,13 @@ static int __wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
     }
     //Repeat last timer until pno disabled.
     pPnoRequest->scanTimers.aTimerValues[i-1].uTimerRepeat = 0;
+#endif
+    pPnoRequest->scanTimers.ucScanTimersCount = 2;
+    pPnoRequest->scanTimers.aTimerValues[0].uTimerRepeat = 7;
+    pPnoRequest->scanTimers.aTimerValues[0].uTimerValue = 45;
+    pPnoRequest->scanTimers.aTimerValues[1].uTimerRepeat = 0;
+    pPnoRequest->scanTimers.aTimerValues[1].uTimerValue = 480;
+    //END IKDREL3KK-2175
 
     pPnoRequest->modePNO = SIR_PNO_MODE_IMMEDIATE;
 
