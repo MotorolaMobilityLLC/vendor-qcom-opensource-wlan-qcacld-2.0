@@ -79,8 +79,8 @@
 #define WMA_READY_EVENTID_TIMEOUT          2000
 #define WMA_TGT_SUSPEND_COMPLETE_TIMEOUT   1000
 #define WMA_WAKE_LOCK_TIMEOUT              1000
-#define WMA_MAX_RESUME_RETRY               10
-#define WMA_RESUME_TIMEOUT                 1000
+#define WMA_MAX_RESUME_RETRY               1000
+#define WMA_RESUME_TIMEOUT                 3000
 #define MAX_MEM_CHUNKS                     32
 /*
    In prima 12 HW stations are supported including BCAST STA(staId 0)
@@ -124,7 +124,7 @@
 
 #ifdef WMA_DEBUG_ALWAYS
 #define WMA_LOGA(fmt, args...) \
-	printk(KERN_INFO "\n%s-%d: " fmt, __func__, __LINE__, ## args)
+	printk(KERN_INFO "%s-%d: " fmt"\n", __func__, __LINE__, ## args)
 #else
 #define WMA_LOGA(fmt, args...)
 #endif
@@ -134,6 +134,8 @@
 
 /* Prefix used by scan req ids generated on the host */
 #define WMA_HOST_SCAN_REQID_PREFIX	 0xA000
+/* Prefix used by roam scan req ids generated on the host */
+#define WMA_HOST_ROAM_SCAN_REQID_PREFIX  0xA800
 /* Prefix used by scan requestor id on host */
 #define WMA_HOST_SCAN_REQUESTOR_ID_PREFIX 0xA000
 #define WMA_HW_DEF_SCAN_MAX_DURATION	  30000 /* 30 secs */
@@ -392,7 +394,7 @@ struct wma_wow {
 	v_BOOL_t deauth_enable;
 	v_BOOL_t disassoc_enable;
 	v_BOOL_t bmiss_enable;
-	v_BOOL_t gtk_err_enable;
+	v_BOOL_t gtk_err_enable[WMA_MAX_SUPPORTED_BSS];
 };
 #ifdef WLAN_FEATURE_11W
 #define CMAC_IPN_LEN         (6)
@@ -418,6 +420,17 @@ typedef struct {
 #define WMA_BSS_STATUS_STARTED 0x1
 #define WMA_BSS_STATUS_STOPPED 0x2
 
+typedef struct {
+	A_UINT32 vdev_id;
+	wmi_ssid ssid;
+	A_UINT32 flags;
+	A_UINT32 requestor_id;
+	A_UINT32  disable_hw_ack;
+	wmi_channel chan;
+	adf_os_atomic_t hidden_ssid_restart_in_progress;
+	tANI_U8 ssidHidden;
+} vdev_restart_params_t;
+
 struct wma_txrx_node {
 	u_int8_t addr[ETH_ALEN];
 	u_int8_t bssid[ETH_ALEN];
@@ -425,6 +438,7 @@ struct wma_txrx_node {
 #ifndef QCA_WIFI_ISOC
 	struct beacon_info *beacon;
 #endif
+	vdev_restart_params_t vdev_restart_params;
 	vdev_cli_config_t config;
 	struct scan_param scan_info;
 	u_int32_t type;
@@ -600,6 +614,7 @@ typedef struct {
         u_int32_t roam_preauth_scan_id;
         u_int16_t roam_preauth_chanfreq;
         void *roam_preauth_chan_context;
+	adf_os_spinlock_t roam_preauth_lock;
 
 	/* Here ol_ini_info is used to store ini
 	 * status of arp offload, ns offload
@@ -619,12 +634,14 @@ typedef struct {
 #endif
 	vos_wake_lock_t wow_wake_lock;
 	int wow_nack;
+	u_int32_t ap_client_cnt;
+	adf_os_atomic_t is_wow_bus_suspended;
 
 	vos_timer_t wma_scan_comp_timer;
 	scan_timer_info wma_scan_timer_info;
 
 	u_int8_t dfs_phyerr_filter_offload;
-
+	v_BOOL_t suitable_ap_hb_failure;
 }t_wma_handle, *tp_wma_handle;
 
 struct wma_target_cap {
@@ -1496,6 +1513,8 @@ u_int16_t   dfs_usenol(struct ieee80211com *ic);
 #define WMA_SMPS_MASK_LOWER_16BITS 0xFF
 #define WMA_SMPS_MASK_UPPER_3BITS 0x7
 #define WMA_SMPS_PARAM_VALUE_S 29
+
+#define WMA_MAX_SCAN_ID        0x00FF
 
 /* U-APSD Access Categories */
 enum uapsd_ac {

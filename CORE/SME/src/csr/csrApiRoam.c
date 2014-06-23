@@ -313,25 +313,17 @@ eHalStatus csrOpen(tpAniSirGlobal pMac)
     return (status);
 }
 
-eHalStatus csr_init_chan_list(tpAniSirGlobal mac)
+eHalStatus csr_init_chan_list(tpAniSirGlobal mac, v_U8_t *alpha2)
 {
     eHalStatus status;
-    static uNvTables nv_tbl;
     v_REGDOMAIN_t reg_id;
     v_CountryInfoSource_t source = COUNTRY_INIT;
 
-    if (vos_nv_readDefaultCountryTable(&nv_tbl) == VOS_STATUS_SUCCESS) {
-       vos_mem_copy(mac->scan.countryCodeDefault,
-                    nv_tbl.defaultCountryTable.countryCode,
-                    WNI_CFG_COUNTRY_CODE_LEN);
-    } else {
-       smsLog(mac, LOGE, FL("fail to get NV_FIELD_IMAGE"));
-       /* hardcoded for now */
-       mac->scan.countryCodeDefault[0] = 'U';
-       mac->scan.countryCodeDefault[1] = 'S';
-       mac->scan.countryCodeDefault[2] = 'I';
-    }
-    smsLog(mac, LOG1, FL("country Code from nvRam %.2s"),
+    mac->scan.countryCodeDefault[0] = alpha2[0];
+    mac->scan.countryCodeDefault[1] = alpha2[1];
+    mac->scan.countryCodeDefault[2] = alpha2[2];
+
+    smsLog(mac, LOGE, FL("init time country code %.2s"),
            mac->scan.countryCodeDefault);
 
     if ('0' == mac->scan.countryCodeDefault[0] &&
@@ -1636,6 +1628,11 @@ eHalStatus csrChangeDefaultConfigParam(tpAniSirGlobal pMac, tCsrConfigParam *pPa
         pMac->roam.configParam.disableAggWithBtc = pParam->disableAggWithBtc;
         //if HDD passed down non zero values then only update,
         //otherwise keep using the defaults
+        if (pParam->nInitialDwellTime)
+        {
+            pMac->roam.configParam.nInitialDwellTime =
+                                        pParam->nInitialDwellTime;
+        }
         if (pParam->nActiveMaxChnTime)
         {
             pMac->roam.configParam.nActiveMaxChnTime = pParam->nActiveMaxChnTime;
@@ -5344,6 +5341,12 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
             So moving this after saving the profile
             */
             //csrRoamStateChange( pMac, eCSR_ROAMING_STATE_JOINED );
+
+            /* Reset remainInPowerActiveTillDHCP as it might have been set
+             * by last failed secured connection.
+             * It should be set only for secured connection.
+             */
+            pMac->pmc.remainInPowerActiveTillDHCP = FALSE;
             if( CSR_IS_INFRASTRUCTURE( pProfile ) )
             {
                 pSession->connectState = eCSR_ASSOC_STATE_TYPE_INFRA_ASSOCIATED;
@@ -5428,6 +5431,11 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                     roamInfo.fAuthRequired = eANI_BOOLEAN_TRUE;
                     //Set the subestate to WaitForKey in case authentiation is needed
                     csrRoamSubstateChange( pMac, eCSR_ROAM_SUBSTATE_WAIT_FOR_KEY, sessionId );
+
+                    /* Set remainInPowerActiveTillDHCP to make sure we wait for
+                     * until keys are set before going into BMPS.
+                     */
+                     pMac->pmc.remainInPowerActiveTillDHCP = TRUE;
 
                     if(pProfile->bWPSAssociation)
                     {
@@ -5989,6 +5997,17 @@ static tANI_BOOLEAN csrRoamProcessResults( tpAniSirGlobal pMac, tSmeCmd *pComman
                     sme_QosCsrEventInd(pMac, (tANI_U8)sessionId, SME_QOS_CSR_DISCONNECT_IND, NULL);
 #endif
                     csrRoamLinkDown(pMac, sessionId);
+
+                    /*
+                          DelSta not done FW still in conneced state so dont
+                          issue IMPS req
+                    */
+
+                    if (pMac->roam.deauthRspStatus == eSIR_SME_DEAUTH_STATUS)
+                    {
+                        smsLog(pMac, LOGW, FL("FW still in connected state "));
+                        break;
+                    }
                     csrScanStartIdleScan(pMac);
                     break;
                 case eCsrForcedIbssLeave:
@@ -7452,10 +7471,23 @@ void csrRoamReissueRoamCommand(tpAniSirGlobal pMac)
                     csrRoamComplete( pMac, eCsrNothingToJoin, NULL );
                 }
             }
-            else if(eCsrStopRoaming == csrRoamJoinNextBss(pMac, pCommand, eANI_BOOLEAN_TRUE))
+            else
             {
-                smsLog(pMac, LOGW, " Failed to reissue join command after disassociated");
-                csrRoamComplete( pMac, eCsrNothingToJoin, NULL );
+                if (pSession->bRefAssocStartCnt > 0)
+                {
+                    /* bRefAssocStartCnt was incremented in csrRoamJoinNextBss
+                     * when the roam command issued previously. As part of reissuing
+                     * the roam command again csrRoamJoinNextBss is going increment
+                     * RefAssocStartCnt. So make sure to decrement the bRefAssocStartCnt
+                     */
+                    pSession->bRefAssocStartCnt--;
+                }
+
+                if(eCsrStopRoaming == csrRoamJoinNextBss(pMac, pCommand, eANI_BOOLEAN_TRUE))
+                {
+                    smsLog(pMac, LOGW, " Failed to reissue join command after disassociated");
+                    csrRoamComplete( pMac, eCsrNothingToJoin, NULL );
+                }
             }
         }
         else
@@ -8170,6 +8202,7 @@ static void csrRoamRoamingStateDeauthRspProcessor( tpAniSirGlobal pMac, tSirSmeD
     //No one is sending eWNI_SME_DEAUTH_REQ to PE.
     smsLog(pMac, LOGW, FL("is no-op"));
     statusCode = csrGetDeAuthRspStatusCode( pSmeRsp );
+    pMac->roam.deauthRspStatus = statusCode;
     if ( CSR_IS_ROAM_SUBSTATE_DEAUTH_REQ( pMac, pSmeRsp->sessionId) )
     {
         csrRoamComplete( pMac, eCsrNothingToJoin, NULL );

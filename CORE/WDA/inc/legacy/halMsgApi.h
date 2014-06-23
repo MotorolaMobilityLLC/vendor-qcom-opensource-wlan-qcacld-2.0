@@ -372,7 +372,19 @@ typedef struct
 
     // PE session id now added to all HAL<->PE transacations
     // HAL sends back response with no modification
+    tANI_U8     sendRsp;
 } tSetStaKeyParams, *tpSetStaKeyParams;
+
+typedef struct sLimMlmSetKeysReq
+{
+    tSirMacAddr     peerMacAddr;
+    tANI_U8         sessionId;      //Added For BT-AMP Support
+    tANI_U8         smesessionId;   // Added for drivers based on wmi interface
+    tANI_U16        aid;
+    tAniEdType      edType;    // Encryption/Decryption type
+    tANI_U8         numKeys;
+    tSirKeys        key[SIR_MAC_MAX_NUM_OF_DEFAULT_KEYS];
+} tLimMlmSetKeysReq, *tpLimMlmSetKeysReq;
 
 //
 // Mesg header is used from tSirMsgQ
@@ -1443,6 +1455,14 @@ typedef struct sTdlsLinkEstablishParams
    tANI_U8   isBufsta;
    tANI_U32  status;
 }tTdlsLinkEstablishParams, *tpTdlsLinkEstablishParams;
+
+#ifdef QCA_WIFI_2_0
+typedef struct tHalHiddenSsidVdevRestart
+{
+   tANI_U8   ssidHidden;
+   tANI_U8 sessionId;
+}tHalHiddenSsidVdevRestart,*tpHalHiddenSsidVdevRestart;
+#endif /* QCA_WIFI_2_0 */
 
 static inline void halGetTxTSFtimer(tpAniSirGlobal pMac,
                                                 tSirMacTimeStamp *pTime)
