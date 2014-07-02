@@ -145,6 +145,13 @@
 #define WMA_SCAN_NPROBES_DEFAULT            (2)
 #define WMA_SCAN_IDLE_TIME_DEFAULT          (25)
 #define WMA_P2P_SCAN_MAX_BURST_DURATION     (120)
+#define WMA_CTS_DURATION_MS_MAX             (32)
+#define WMA_GO_MIN_ACTIVE_SCAN_BURST_DURATION   (40)
+#define WMA_GO_MAX_ACTIVE_SCAN_BURST_DURATION   (120)
+
+#define WMA_GO_MIN_ACTIVE_SCAN_BURST_DURATION   (40)
+#define WMA_GO_MAX_ACTIVE_SCAN_BURST_DURATION   (120)
+#define WMA_DWELL_TIME_PASSIVE_DEFAULT          (110)
 
 /* Roaming default values
  * All time and period values are in milliseconds.
@@ -485,6 +492,8 @@ struct wma_txrx_node {
 #if defined WLAN_FEATURE_VOWIFI_11R
         void    *staKeyParams;
 #endif
+	v_BOOL_t ps_enabled;
+	u_int32_t dtim_policy;
 };
 
 #if defined(QCA_WIFI_FTM) && !defined(QCA_WIFI_ISOC)
@@ -556,6 +565,14 @@ typedef struct {
 
 	/* Event to wait for tx download completion */
 	vos_event_t tx_frm_download_comp_event;
+
+	/*
+	 * Dummy event to wait for draining MSDUs left in hardware tx
+	 * queue and before requesting VDEV_STOP. Nobody will set this
+	 * and wait will timeout, and code will poll the pending tx
+	 * descriptors number to be zero.
+	 */
+	vos_event_t tx_queue_empty_event;
 
 	/* Ack Complete Callback registered by umac */
 	pWDAAckFnTxComp umac_ota_ack_cb[SIR_MAC_MGMT_RESERVED15];
@@ -642,6 +659,11 @@ typedef struct {
 
 	u_int8_t dfs_phyerr_filter_offload;
 	v_BOOL_t suitable_ap_hb_failure;
+
+	/* Powersave Configuration Parameters */
+	u_int8_t staMaxLIModDtim;
+	u_int8_t staModDtim;
+	u_int8_t staDynamicDtim;
 }t_wma_handle, *tp_wma_handle;
 
 struct wma_target_cap {
@@ -1542,4 +1564,8 @@ enum uapsd_up {
 };
 
 #define WMA_TGT_INVALID_SNR (-1)
+#define WMA_DYNAMIC_DTIM_SETTING_THRESHOLD 2
+
+#define WMA_TX_Q_RECHECK_TIMER_WAIT      2    // 2 ms
+#define WMA_TX_Q_RECHECK_TIMER_MAX_WAIT  20   // 20 ms
 #endif

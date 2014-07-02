@@ -2632,6 +2632,24 @@ eHalStatus sme_ProcessMsg(tHalHandle hHal, vos_msg_t* pMsg)
               }
               break;
 #endif
+          case eWNI_SME_LINK_SPEED_IND:
+               if (pMac->sme.pLinkSpeedIndCb)
+               {
+                   pMac->sme.pLinkSpeedIndCb(pMsg->bodyptr,
+                                             pMac->sme.pLinkSpeedCbContext);
+               }
+               if (pMsg->bodyptr)
+               {
+                   vos_mem_free(pMsg->bodyptr);
+               }
+               break;
+          case eWNI_SME_CSA_OFFLOAD_EVENT:
+               if (pMsg->bodyptr)
+               {
+                   csrScanFlushBssEntry(pMac, pMsg->bodyptr);
+                   vos_mem_free(pMsg->bodyptr);
+               }
+               break;
           default:
 
              if ( ( pMsg->type >= eWNI_SME_MSG_TYPES_BEGIN )
@@ -8039,7 +8057,7 @@ eHalStatus sme_8023MulticastList (tHalHandle hHal, tANI_U8 sessionId, tpSirRcvFl
     if(pSession == NULL )
     {
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR, "%s: Unable to find "
-            "the right session", __func__);
+            "the session Id: %d", __func__, sessionId);
         return eHAL_STATUS_FAILURE;
     }
 
@@ -10616,6 +10634,46 @@ eHalStatus sme_UpdateTdlsPeerState(tHalHandle hHal,
     }
     return(status);
 }
+
+eHalStatus sme_GetLinkSpeed(tHalHandle hHal, tSirLinkSpeedInfo *lsReq, void *plsContext,
+                            void (*pCallbackfn)(tSirLinkSpeedInfo *indParam, void *pContext) )
+{
+
+    eHalStatus          status    = eHAL_STATUS_SUCCESS;
+    VOS_STATUS          vosStatus = VOS_STATUS_SUCCESS;
+    tpAniSirGlobal      pMac      = PMAC_STRUCT(hHal);
+    vos_msg_t           vosMessage;
+
+    status = sme_AcquireGlobalLock(&pMac->sme);
+    if (eHAL_STATUS_SUCCESS == status)
+    {
+        if ( (NULL == pCallbackfn) &&
+            (NULL == pMac->sme.pLinkSpeedIndCb))
+        {
+           VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                     "%s: Indication Call back did not registered", __func__);
+           sme_ReleaseGlobalLock(&pMac->sme);
+           return eHAL_STATUS_FAILURE;
+        }
+        else if (NULL != pCallbackfn)
+        {
+           pMac->sme.pLinkSpeedCbContext = plsContext;
+           pMac->sme.pLinkSpeedIndCb = pCallbackfn;
+        }
+        /* serialize the req through MC thread */
+        vosMessage.bodyptr = lsReq;
+        vosMessage.type    = WDA_GET_LINK_SPEED;
+        vosStatus = vos_mq_post_message(VOS_MQ_ID_WDA, &vosMessage);
+        if (!VOS_IS_STATUS_SUCCESS(vosStatus))
+        {
+           VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_ERROR,
+                     "%s: Post Link Speed msg fail", __func__);
+           status = eHAL_STATUS_FAILURE;
+        }
+        sme_ReleaseGlobalLock(&pMac->sme);
+    }
+    return(status);
+}
 #endif /* QCA_WIFI_2_0 */
 #endif /* FEATURE_WLAN_TDLS */
 /* ---------------------------------------------------------------------------
@@ -12036,17 +12094,18 @@ eHalStatus sme_StatsExtEvent(tHalHandle hHal, void* pMsg)
 #endif
 /* ---------------------------------------------------------------------------
     \fn sme_UpdateDFSScanMode
-    \brief  Update DFS roam Mode
+    \brief  Update DFS roam scan mode
             This function is called through dynamic setConfig callback function
-            to configure isAllowDFSChannelRoam.
+            to configure allowDFSChannelRoam.
     \param  hHal - HAL handle for device
-    \param  isAllowDFSChannelRoam - Enable/Disable DFS roaming scan
-    \return eHAL_STATUS_SUCCESS - SME update allowDFSChannelRoam config
+    \param  allowDFSChannelRoam - DFS roaming scan mode 0 (disable),
+            1 (passive), 2 (active)
+    \return eHAL_STATUS_SUCCESS - SME update DFS roaming scan config
             successfully.
-            Other status means SME is failed to update isAllowDFSChannelRoam.
+            Other status means SME failed to update DFS roaming scan config.
+    \sa
     -------------------------------------------------------------------------*/
-
-eHalStatus sme_UpdateDFSScanMode(tHalHandle hHal, v_BOOL_t isAllowDFSChannelRoam)
+eHalStatus sme_UpdateDFSScanMode(tHalHandle hHal, v_U8_t allowDFSChannelRoam)
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     eHalStatus          status    = eHAL_STATUS_SUCCESS;
@@ -12057,11 +12116,11 @@ eHalStatus sme_UpdateDFSScanMode(tHalHandle hHal, v_BOOL_t isAllowDFSChannelRoam
         VOS_TRACE(VOS_MODULE_ID_SME, VOS_TRACE_LEVEL_DEBUG,
                      "LFR runtime successfully set AllowDFSChannelRoam Mode to "
                      "%d - old value is %d - roam state is %s",
-                     isAllowDFSChannelRoam,
+                     allowDFSChannelRoam,
                      pMac->roam.configParam.allowDFSChannelRoam,
                      macTraceGetNeighbourRoamState(
                      pMac->roam.neighborRoamInfo.neighborRoamState));
-        pMac->roam.configParam.allowDFSChannelRoam = isAllowDFSChannelRoam;
+        pMac->roam.configParam.allowDFSChannelRoam = allowDFSChannelRoam;
         sme_ReleaseGlobalLock( &pMac->sme );
     }
 #ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
@@ -12075,14 +12134,65 @@ eHalStatus sme_UpdateDFSScanMode(tHalHandle hHal, v_BOOL_t isAllowDFSChannelRoam
     return status ;
 }
 /*--------------------------------------------------------------------------
-  \brief sme_GetWESMode() - get WES Mode
-  This is a synchronous call
-  \param hHal - The handle returned by macOpen
-  \return DFS roaming mode Enabled(1)/Disabled(0)
+  \brief sme_GetDFSScanMode() - get DFS roam scan mode
+            This is a synchronous call
+  \param hHal - The handle returned by macOpen.
+  \return DFS roaming scan mode 0 (disable), 1 (passive), 2 (active)
   \sa
   --------------------------------------------------------------------------*/
-v_BOOL_t sme_GetDFSScanMode(tHalHandle hHal)
+v_U8_t sme_GetDFSScanMode(tHalHandle hHal)
 {
     tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
     return pMac->roam.configParam.allowDFSChannelRoam;
 }
+
+/* ---------------------------------------------------------------------------
+    \fn sme_staInMiddleOfRoaming
+    \brief  This function returns TRUE if STA is in the middle of roaming state
+    \param  hHal - HAL handle for device
+    \- return TRUE or FALSE
+    -------------------------------------------------------------------------*/
+tANI_BOOLEAN sme_staInMiddleOfRoaming(tHalHandle hHal)
+{
+    tpAniSirGlobal pMac   = PMAC_STRUCT( hHal );
+    eHalStatus     status = eHAL_STATUS_SUCCESS;
+    tANI_BOOLEAN   ret    = FALSE;
+
+    if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme))) {
+        ret = csrNeighborMiddleOfRoaming(hHal);
+        sme_ReleaseGlobalLock(&pMac->sme);
+    }
+    return ret;
+}
+
+
+#ifdef WLAN_FEATURE_ROAM_SCAN_OFFLOAD
+/* ---------------------------------------------------------------------------
+    \fn sme_abortRoamScan
+    \brief  API to abort current roam scan cycle by roam scan offload module.
+    \param  hHal - The handle returned by macOpen.
+    \return eHalStatus
+  ---------------------------------------------------------------------------*/
+
+eHalStatus sme_abortRoamScan(tHalHandle hHal)
+{
+    eHalStatus status = eHAL_STATUS_SUCCESS;
+    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
+
+    smsLog(pMac, LOGW, "entering function %s", __func__);
+    if (pMac->roam.configParam.isRoamOffloadScanEnabled)
+    {
+        /* acquire the lock for the sme object */
+        status = sme_AcquireGlobalLock(&pMac->sme);
+        if(HAL_STATUS_SUCCESS(status))
+        {
+            csrRoamOffloadScan(pMac, ROAM_SCAN_OFFLOAD_ABORT_SCAN,
+                               REASON_ROAM_ABORT_ROAM_SCAN);
+            /* release the lock for the sme object */
+            sme_ReleaseGlobalLock( &pMac->sme );
+        }
+    }
+
+    return(status);
+}
+#endif //#if WLAN_FEATURE_ROAM_SCAN_OFFLOAD

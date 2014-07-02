@@ -2992,6 +2992,12 @@ typedef struct sSmeMaxAssocInd
     tSirMacAddr peerMac;     // the new peer that got rejected due to softap max assoc limit reached
 } tSmeMaxAssocInd, *tpSmeMaxAssocInd;
 
+typedef struct sSmeCsaOffloadInd
+{
+    tANI_U16    mesgType;    // eWNI_SME_CSA_OFFLOAD_EVENT
+    tANI_U16    mesgLen;
+    tSirMacAddr bssId;       // BSSID
+} tSmeCsaOffloadInd, *tpSmeCsaOffloadInd;
 /*--------------------------------------------------------------------*/
 /* BootLoader message definition                                      */
 /*--------------------------------------------------------------------*/
@@ -3824,6 +3830,12 @@ typedef struct SirMobilityDomainInfo
   tANI_U16 mobilityDomain;
 } tSirMobilityDomainInfo;
 
+typedef enum {
+        SIR_ROAMING_DFS_CHANNEL_DISABLED = 0,
+        SIR_ROAMING_DFS_CHANNEL_ENABLED_NORMAL = 1,
+        SIR_ROAMING_DFS_CHANNEL_ENABLED_ACTIVE = 2
+} eSirDFSRoamScanMode;
+
 typedef struct sSirRoamOffloadScanReq
 {
   eAniBoolean RoamScanOffloadEnabled;
@@ -3865,6 +3877,7 @@ typedef struct sSirRoamOffloadScanReq
   tANI_U8   RoamBmissFirstBcnt;
   tANI_U8   RoamBmissFinalBcnt;
   tANI_U8   RoamBeaconRssiWeight;
+  eSirDFSRoamScanMode  allowDFSChannelRoam;
 } tSirRoamOffloadScanReq, *tpSirRoamOffloadScanReq;
 #endif //WLAN_FEATURE_ROAM_SCAN_OFFLOAD
 
@@ -4639,6 +4652,13 @@ typedef struct sSirLPHBInd
 } tSirLPHBInd;
 #endif /* FEATURE_WLAN_LPHB */
 
+typedef struct sSirLinkSpeedInfo
+{
+  /* MAC Address for the peer */
+  tSirMacAddr peer_macaddr;
+  tANI_U32 estLinkSpeed;     //Linkspeed from firmware
+} tSirLinkSpeedInfo, *tpSirLinkSpeedInfo;
+
 typedef struct sSirAddPeriodicTxPtrn
 {
    /* MAC Address for the adapter */
@@ -4699,7 +4719,7 @@ typedef PACKED_PRE struct PACKED_POST
     tANI_U8   bssid[6];     /* BSSID */
     tANI_U8   ssid[33];     /* SSID */
     tANI_U8   ch;           /* Channel */
-    tANI_U8   rssi;         /* RSSI or Level */
+    tANI_S8   rssi;         /* RSSI or Level */
     /*Timestamp when Network was found. Used to calculate age based on timestamp
       in GET_RSP msg header */
     tANI_U32  timestamp;

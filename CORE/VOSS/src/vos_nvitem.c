@@ -113,11 +113,11 @@ static v_BOOL_t crda_regulatory_run_time_entry_valid = VOS_FALSE;
       NL80211_RRF_PASSIVE_SCAN | NL80211_RRF_NO_OFDM)
 
 /* We allow IBSS on these on a case by case basis by regulatory domain */
-#define REG_RULE_5GHZ_5150_5350	REG_RULE(5150-10, 5350+10, 40, 0, 30,\
+#define REG_RULE_5GHZ_5150_5350	REG_RULE(5150-10, 5350+10, 80, 0, 30,\
       NL80211_RRF_PASSIVE_SCAN | NL80211_RRF_NO_IBSS)
-#define REG_RULE_5GHZ_5470_5850	REG_RULE(5470-10, 5850+10, 40, 0, 30,\
+#define REG_RULE_5GHZ_5470_5850	REG_RULE(5470-10, 5850+10, 80, 0, 30,\
       NL80211_RRF_PASSIVE_SCAN | NL80211_RRF_NO_IBSS)
-#define REG_RULE_5GHZ_5725_5850	REG_RULE(5725-10, 5850+10, 40, 0, 30,\
+#define REG_RULE_5GHZ_5725_5850	REG_RULE(5725-10, 5850+10, 80, 0, 30,\
       NL80211_RRF_PASSIVE_SCAN | NL80211_RRF_NO_IBSS)
 
 #define REG_RULE_2GHZ_ALL		REG_RULE_2GHZ_CH01_11, \
@@ -1185,6 +1185,18 @@ VOS_STATUS vos_nv_open(void)
            VOS_TRACE(VOS_MODULE_ID_VOSS,  VOS_TRACE_LEVEL_ERROR,
                        "nvParser failed %d",status);
 
+           if (nvReadBufSize != sizeof(sHalNv)) {
+               vos_mem_free(pEncodedBuf);
+               pEncodedBuf = (v_U8_t *)vos_mem_malloc(sizeof(sHalNv));
+
+               if (!pEncodedBuf) {
+                   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                             "%s : failed to allocate memory for NV", __func__);
+                   vos_mem_free(pnvData);
+                   return VOS_STATUS_E_NOMEM;
+               }
+           }
+
            nvReadBufSize = 0;
 
            vos_mem_copy(pEncodedBuf, &nvDefaults, sizeof(sHalNv));
@@ -1196,6 +1208,17 @@ VOS_STATUS vos_nv_open(void)
     {
        dataOffset = sizeof(v_U32_t);
        nvReadEncodeBufSize = sizeof(sHalNv);
+       if (nvReadBufSize != nvReadEncodeBufSize) {
+           vos_mem_free(pEncodedBuf);
+           pEncodedBuf = (v_U8_t *)vos_mem_malloc(nvReadEncodeBufSize);
+           if (!pEncodedBuf)
+           {
+               VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+                         "%s : failed to allocate memory for NV", __func__);
+               return VOS_STATUS_E_NOMEM;
+           }
+       }
+
        memcpy(pEncodedBuf, &pnvEncodedBuf[dataOffset], nvReadEncodeBufSize);
     }
 

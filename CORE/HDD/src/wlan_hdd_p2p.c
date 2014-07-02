@@ -990,13 +990,15 @@ int wlan_hdd_mgmt_tx( struct wiphy *wiphy, struct net_device *dev,
         actionFrmType = buf[WLAN_HDD_PUBLIC_ACTION_FRAME_TYPE_OFFSET];
         if(actionFrmType >= MAX_P2P_ACTION_FRAME_TYPE)
         {
-            hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P] unknown[%d] ---> OTA",
-                                   actionFrmType);
+            hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P] unknown[%d] ---> OTA to "
+                   MAC_ADDRESS_STR, actionFrmType,
+                   MAC_ADDR_ARRAY(&buf[WLAN_HDD_80211_FRM_DA_OFFSET]));
         }
         else
         {
-            hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P] %s ---> OTA",
-            p2p_action_frame_type[actionFrmType]);
+            hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P] %s ---> OTA to "
+                   MAC_ADDRESS_STR, p2p_action_frame_type[actionFrmType],
+                   MAC_ADDR_ARRAY(&buf[WLAN_HDD_80211_FRM_DA_OFFSET]));
             if( (actionFrmType == WLAN_HDD_PROV_DIS_REQ) &&
                 (globalP2PConnectionStatus == P2P_NOT_ACTIVE) )
             {
@@ -1412,6 +1414,7 @@ int hdd_setP2pNoa( struct net_device *dev, tANI_U8 *command )
     tP2pPsConfig NoA;
     int count, duration, start_time;
     char *param;
+    int ret;
 
     param = strnchr(command, strlen(command), ' ');
     if (param == NULL)
@@ -1421,9 +1424,15 @@ int hdd_setP2pNoa( struct net_device *dev, tANI_U8 *command )
        return -EINVAL;
     }
     param++;
-    sscanf(param, "%d %d %d", &count, &start_time, &duration);
+    ret = sscanf(param, "%d %d %d", &count, &start_time, &duration);
+    if (ret != 3) {
+        VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+               "%s: P2P_SET GO NoA: fail to read params, ret=%d",
+                __func__, ret);
+        return -EINVAL;
+    }
     VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
-               "%s: P2P_SET GO NoA: count=%d duration=%d interval=%d",
+               "%s: P2P_SET GO NoA: count=%d start_time=%d duration=%d",
                 __func__, count, start_time, duration);
     duration = MS_TO_MUS(duration);
     /* PS Selection
@@ -1489,6 +1498,7 @@ int hdd_setP2pOpps( struct net_device *dev, tANI_U8 *command )
     tP2pPsConfig NoA;
     char *param;
     int legacy_ps, opp_ps, ctwindow;
+    int ret;
 
     param = strnchr(command, strlen(command), ' ');
     if (param == NULL)
@@ -1498,7 +1508,13 @@ int hdd_setP2pOpps( struct net_device *dev, tANI_U8 *command )
         return -EINVAL;
     }
     param++;
-    sscanf(param, "%d %d %d", &legacy_ps, &opp_ps, &ctwindow);
+    ret = sscanf(param, "%d %d %d", &legacy_ps, &opp_ps, &ctwindow);
+    if (ret != 3) {
+        VOS_TRACE (VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                 "%s: P2P_SET GO PS: fail to read params, ret=%d",
+                 __func__, ret);
+        return -EINVAL;
+    }
     VOS_TRACE (VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                  "%s: P2P_SET GO PS: legacy_ps=%d opp_ps=%d ctwindow=%d",
                  __func__, legacy_ps, opp_ps, ctwindow);
@@ -1949,18 +1965,22 @@ void hdd_indicateMgmtFrame( hdd_adapter_t *pAdapter,
                 vos_mem_compare(&pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_OFFSET+2], SIR_MAC_P2P_OUI, SIR_MAC_P2P_OUI_SIZE))
             // P2P action frames
             {
+                u8 *macFrom = &pbFrames[WLAN_HDD_80211_FRM_DA_OFFSET+6];
                 actionFrmType = pbFrames[WLAN_HDD_PUBLIC_ACTION_FRAME_TYPE_OFFSET];
                 hddLog(LOG1, "Rx Action Frame %u", actionFrmType);
 #ifdef WLAN_FEATURE_P2P_DEBUG
                 if(actionFrmType >= MAX_P2P_ACTION_FRAME_TYPE)
                 {
-                    hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P] unknown[%d] <--- OTA",
-                                                                actionFrmType);
+                    hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P] unknown[%d] <--- OTA"
+                           " from " MAC_ADDRESS_STR, actionFrmType,
+                           MAC_ADDR_ARRAY(macFrom));
                 }
                 else
                 {
-                    hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P] %s <--- OTA",
-                    p2p_action_frame_type[actionFrmType]);
+                    hddLog(VOS_TRACE_LEVEL_ERROR,"[P2P] %s <--- OTA"
+                           " from " MAC_ADDRESS_STR,
+                           p2p_action_frame_type[actionFrmType],
+                           MAC_ADDR_ARRAY(macFrom));
                     if( (actionFrmType == WLAN_HDD_PROV_DIS_REQ) &&
                         (globalP2PConnectionStatus == P2P_NOT_ACTIVE) )
                     {

@@ -2825,8 +2825,11 @@ void limSendExitBmpsInd(tpAniSirGlobal pMac, tExitBmpsReason reasonCode,
 void limHandleCSAoffloadMsg(tpAniSirGlobal pMac,tpSirMsgQ MsgQ)
 {
    tpPESession psessionEntry;
+   tSirMsgQ  mmhMsg;
    tpCSAOffloadParams csa_params = (tpCSAOffloadParams)(MsgQ->bodyptr);
+   tpSmeCsaOffloadInd pCsaOffloadInd;
    tpDphHashNode pStaDs = NULL ;
+   tANI_U8 sessionId;
    tANI_U16 aid = 0 ;
 
    if(!csa_params)
@@ -2835,7 +2838,7 @@ void limHandleCSAoffloadMsg(tpAniSirGlobal pMac,tpSirMsgQ MsgQ)
       return;
    }
 
-   psessionEntry = peFindSessionBySessionId(pMac, csa_params->sessionId);
+   psessionEntry = peFindSessionByBssid(pMac, csa_params->bssId, &sessionId);
    if(!psessionEntry)
    {
       limLog(pMac, LOGP, FL("Session does not exist for given sessionID"));
@@ -2893,6 +2896,25 @@ void limHandleCSAoffloadMsg(tpAniSirGlobal pMac,tpSirMsgQ MsgQ)
              psessionEntry->gLimChannelSwitch.secondarySubBand);
 
       limPrepareFor11hChannelSwitch(pMac, psessionEntry);
+      pCsaOffloadInd = vos_mem_malloc(sizeof(tSmeCsaOffloadInd));
+      if (NULL == pCsaOffloadInd) {
+          limLog(pMac, LOGE,
+                   FL("AllocateMemory failed for eWNI_SME_CSA_OFFLOAD_EVENT"));
+          goto err;
+      }
+
+      vos_mem_set(pCsaOffloadInd, sizeof(tSmeCsaOffloadInd), 0);
+      pCsaOffloadInd->mesgType = eWNI_SME_CSA_OFFLOAD_EVENT;
+      pCsaOffloadInd->mesgLen = sizeof(tSmeCsaOffloadInd);
+      vos_mem_copy(pCsaOffloadInd->bssId, psessionEntry->bssId,
+                   sizeof(tSirMacAddr));
+      mmhMsg.type = eWNI_SME_CSA_OFFLOAD_EVENT;
+      mmhMsg.bodyptr = pCsaOffloadInd;
+      mmhMsg.bodyval = 0;
+      PELOG1(limLog(pMac, LOG1, FL("Sending eWNI_SME_CSA_OFFLOAD_EVENT to SME. "));)
+      MTRACE(macTraceMsgTx(pMac, psessionEntry->peSessionId, mmhMsg.type));
+      limReInitScanResults(pMac);
+      limSysProcessMmhMsgApi(pMac, &mmhMsg,  ePROT);
    }
 
 err:

@@ -2004,7 +2004,8 @@ void limProcessMlmDelBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ,tpPESession 
    //     limLog( pMac, LOGE, FL( "Session deos not exist with given sessionId" ));
    //     return;
   //  }
-  SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
+    SET_LIM_PROCESS_DEFD_MESGS(pMac, true);
+    pMac->sys.gSysFrameCount[SIR_MAC_MGMT_FRAME][SIR_MAC_MGMT_DEAUTH] = 0;
 
     if (((psessionEntry->limSystemRole == eLIM_BT_AMP_AP_ROLE)  ||
          (psessionEntry->limSystemRole == eLIM_BT_AMP_STA_ROLE)
@@ -3207,7 +3208,7 @@ void limProcessMlmAddBssRsp( tpAniSirGlobal pMac, tpSirMsgQ limMsgQ )
             {
                 vos_mem_free(pAddBssParams);
                 limMsgQ->bodyptr = NULL;
-            }           
+            }
         return;
     }
     /* update PE session Id*/
