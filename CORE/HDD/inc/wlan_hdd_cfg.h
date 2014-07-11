@@ -1504,6 +1504,11 @@ typedef enum
 #define CFG_DISABLE_DFS_CH_SWITCH_MAX             ( 1 )
 #define CFG_DISABLE_DFS_CH_SWITCH_DEFAULT         ( 0 )
 
+#define CFG_ENABLE_DFS_MASTER_CAPABILITY               "gEnableDFSMasterCap"
+#define CFG_ENABLE_DFS_MASTER_CAPABILITY_MIN           ( 0 )
+#define CFG_ENABLE_DFS_MASTER_CAPABILITY_MAX           ( 1 )
+#define CFG_ENABLE_DFS_MASTER_CAPABILITY_DEFAULT       ( 0 )
+
 #define CFG_ENABLE_DFS_PHYERR_FILTEROFFLOAD_NAME       "dfsPhyerrFilterOffload"
 #define CFG_ENABLE_DFS_PHYERR_FILTEROFFLOAD_MIN        ( 0 )
 #define CFG_ENABLE_DFS_PHYERR_FILTEROFFLOAD_MAX        ( 1 )
@@ -1916,7 +1921,7 @@ typedef enum
 #define CFG_TDLS_IMPLICIT_TRIGGER_DEFAULT           ( 0 )
 
 #define CFG_TDLS_TX_STATS_PERIOD                    "gTDLSTxStatsPeriod"
-#define CFG_TDLS_TX_STATS_PERIOD_MIN                ( 2000 )
+#define CFG_TDLS_TX_STATS_PERIOD_MIN                ( 10 )
 #define CFG_TDLS_TX_STATS_PERIOD_MAX                ( 4294967295UL )
 #define CFG_TDLS_TX_STATS_PERIOD_DEFAULT            ( 5000 )
 
@@ -1941,7 +1946,7 @@ typedef enum
 #define CFG_TDLS_IDLE_TIMEOUT_DEFAULT               ( 5000 )
 
 #define CFG_TDLS_IDLE_PACKET_THRESHOLD              "gTDLSIdlePacketThreshold"
-#define CFG_TDLS_IDLE_PACKET_THRESHOLD_MIN          ( 1 )
+#define CFG_TDLS_IDLE_PACKET_THRESHOLD_MIN          ( 0 )
 #define CFG_TDLS_IDLE_PACKET_THRESHOLD_MAX          ( 40000 )
 #define CFG_TDLS_IDLE_PACKET_THRESHOLD_DEFAULT      ( 5 )
 
@@ -1991,6 +1996,11 @@ typedef enum
 #define CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD_MIN      (10)
 #define CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD_MAX      (20)
 #define CFG_TDLS_PUAPSD_RX_FRAME_THRESHOLD_DEFAULT  (10)
+
+#define CFG_TDLS_EXTERNAL_CONTROL                   "gTDLSExternalControl"
+#define CFG_TDLS_EXTERNAL_CONTROL_MIN               (0)
+#define CFG_TDLS_EXTERNAL_CONTROL_MAX               (1)
+#define CFG_TDLS_EXTERNAL_CONTROL_DEFAULT           (0)
 #endif
 
 #ifdef WLAN_ACTIVEMODE_OFFLOAD_FEATURE
@@ -2809,6 +2819,7 @@ typedef struct
    v_U32_t                     fEnableTDLSBufferSta;
    v_U32_t                     fTDLSPuapsdInactivityTimer;
    v_U32_t                     fTDLSRxFrameThreshold;
+   v_BOOL_t                    fTDLSExternalControl;
 #endif
 #ifdef WLAN_SOFTAP_VSTA_FEATURE
    v_BOOL_t                    fEnableVSTASupport;
@@ -2879,6 +2890,7 @@ typedef struct
    v_U8_t                      wowEnable;
    v_U8_t                      maxNumberOfPeers;
    v_U8_t                      disableDFSChSwitch;
+   v_U8_t                      enableDFSMasterCap;
 #ifndef QCA_WIFI_ISOC
    v_U16_t                     thermalTempMinLevel0;
    v_U16_t                     thermalTempMaxLevel0;

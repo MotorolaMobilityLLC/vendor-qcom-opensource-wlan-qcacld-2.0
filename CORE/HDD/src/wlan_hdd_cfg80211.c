@@ -1117,7 +1117,9 @@ int wlan_hdd_cfg80211_init(struct device *dev,
     wiphy->vendor_events = wlan_hdd_cfg80211_vendor_events;
     wiphy->n_vendor_events = ARRAY_SIZE(wlan_hdd_cfg80211_vendor_events);
 
-    wiphy->flags |= WIPHY_FLAG_DFS_OFFLOAD;
+    if (pCfg->enableDFSMasterCap) {
+        wiphy->flags |= WIPHY_FLAG_DFS_OFFLOAD;
+    }
 
     wiphy->max_ap_assoc_sta = pCfg->maxNumberOfPeers;
 
@@ -2613,7 +2615,8 @@ static int wlan_hdd_cfg80211_start_bss(hdd_adapter_t *pHostapdAdapter,
     if (!VOS_IS_STATUS_SUCCESS(status))
     {
         VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                 ("ERROR: HDD vos wait for single_event failed!!"));
+                 ("%s: ERROR: HDD vos wait for single_event failed!!"),
+                 __func__);
         smeGetCommandQStatus(hHal);
         VOS_ASSERT(0);
         return -EINVAL;
@@ -2883,7 +2886,8 @@ static int wlan_hdd_cfg80211_stop_ap (struct wiphy *wiphy,
                 if (!VOS_IS_STATUS_SUCCESS(status))
                 {
                     VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                             ("ERROR: HDD vos wait for single_event failed!!"));
+                             ("%s: ERROR: HDD vos wait for single_event failed!!"),
+                             __func__);
                     VOS_ASSERT(0);
                 }
             }
@@ -3544,17 +3548,6 @@ static int __wlan_hdd_cfg80211_change_iface(struct wiphy *wiphy,
                 if (status != VOS_STATUS_SUCCESS)
                         return status;
 
-                // fw will take care if PS offload is enabled.
-                if (pHddCtx->cfg_ini->enablePowersaveOffload)
-                    goto done;
-                /* In case of JB, for P2P-GO, only change interface will be called,
-                 * This is the right place to enable back bmps_imps()
-                 */
-                if (pHddCtx->hdd_wlan_suspended)
-                {
-                    hdd_set_pwrparams(pHddCtx);
-                }
-                hdd_enable_bmps_imps(pHddCtx);
 #ifdef QCA_LL_TX_FLOW_CT
                 if ((NL80211_IFTYPE_P2P_CLIENT == type) ||
                      (NL80211_IFTYPE_STATION == type))
@@ -3569,6 +3562,18 @@ static int __wlan_hdd_cfg80211_change_iface(struct wiphy *wiphy,
                              (void *)pAdapter);
                 }
 #endif /* QCA_LL_TX_FLOW_CT */
+
+                // fw will take care if PS offload is enabled.
+                if (pHddCtx->cfg_ini->enablePowersaveOffload)
+                    goto done;
+                /* In case of JB, for P2P-GO, only change interface will be called,
+                 * This is the right place to enable back bmps_imps()
+                 */
+                if (pHddCtx->hdd_wlan_suspended)
+                {
+                    hdd_set_pwrparams(pHddCtx);
+                }
+                hdd_enable_bmps_imps(pHddCtx);
                 goto done;
             case NL80211_IFTYPE_AP:
             case NL80211_IFTYPE_P2P_GO:
@@ -3711,7 +3716,7 @@ static int wlan_hdd_tdls_add_station(struct wiphy *wiphy,
     }
 
 
-    pTdlsPeer = wlan_hdd_tdls_find_peer(pAdapter, mac, TRUE);
+    pTdlsPeer = wlan_hdd_tdls_get_peer(pAdapter, mac);
 
     if ( NULL == pTdlsPeer ) {
         VOS_TRACE( VOS_MODULE_ID_HDD, TDLS_LOG_LEVEL,
@@ -6073,8 +6078,13 @@ int wlan_hdd_cfg80211_connect_start( hdd_adapter_t  *pAdapter,
          */
         if (WLAN_HDD_INFRA_STATION == pAdapter->device_mode ||
             WLAN_HDD_P2P_CLIENT == pAdapter->device_mode)
+        {
+            VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                      "%s: Set HDD connState to eConnectionState_Connecting",
+                      __func__);
             hdd_connSetConnectionState(WLAN_HDD_GET_STATION_CTX_PTR(pAdapter),
                                                  eConnectionState_Connecting);
+        }
 
         /* After 8-way handshake supplicant should give the scan command
          * in that it update the additional IEs, But because of scan
@@ -7030,6 +7040,9 @@ int wlan_hdd_disconnect( hdd_adapter_t *pAdapter, u16 reason )
     netif_tx_disable(pAdapter->dev);
     netif_carrier_off(pAdapter->dev);
     pHddCtx->isAmpAllowed = VOS_TRUE;
+    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+              "%s: Set HDD connState to eConnectionState_Disconnecting",
+              __func__);
     pHddStaCtx->conn_info.connState = eConnectionState_Disconnecting;
     INIT_COMPLETION(pAdapter->disconnect_comp_var);
 
@@ -9573,15 +9586,6 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
     tSmeTdlsPeerStateParams smeTdlsPeerStateParams;
     eHalStatus halStatus = eHAL_STATUS_FAILURE;
 #endif
-#ifdef WLAN_FEATURE_TDLS_DEBUG
-    const char *tdls_oper_str[]= {
-        "NL80211_TDLS_DISCOVERY_REQ",
-        "NL80211_TDLS_SETUP",
-        "NL80211_TDLS_TEARDOWN",
-        "NL80211_TDLS_ENABLE_LINK",
-        "NL80211_TDLS_DISABLE_LINK",
-        "NL80211_TDLS_UNKNOWN_OPER"};
-#endif
     hddTdlsPeer_t *pTdlsPeer;
 
     MTRACE(vos_trace(VOS_MODULE_ID_HDD,
@@ -9603,23 +9607,6 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
         return status;
     }
 
-    pTdlsPeer = wlan_hdd_tdls_find_peer(pAdapter, peer, TRUE);
-
-    if ( NULL == pTdlsPeer ) {
-        hddLog(VOS_TRACE_LEVEL_ERROR, "%s: " MAC_ADDRESS_STR " (oper %d) not exsting. ignored",
-               __func__, MAC_ADDR_ARRAY(peer), (int)oper);
-        return -EINVAL;
-    }
-
-#ifdef WLAN_FEATURE_TDLS_DEBUG
-    if((int)oper > 4)
-        oper = 5;
-
-    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-               "%s: " MAC_ADDRESS_STR " link_status %d (%s) ", "tdls_oper",
-               MAC_ADDR_ARRAY(peer), pTdlsPeer->link_status,
-               tdls_oper_str[(int)oper]);
-#endif
 
     /* QCA 2.0 Discrete ANDs feature capability in cfg_ini with that
      * received from target, so cfg_ini gives combined intersected result
@@ -9643,11 +9630,28 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
                 long ret;
                 tCsrTdlsLinkEstablishParams tdlsLinkEstablishParams;
 
+                pTdlsPeer = wlan_hdd_tdls_find_peer(pAdapter, peer, TRUE);
+
+                if (NULL == pTdlsPeer)
+                {
+                    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                               "%s: peer matching "MAC_ADDRESS_STR
+                               " not found, ignore NL80211_TDLS_ENABLE_LINK",
+                                __func__, MAC_ADDR_ARRAY(peer));
+                    return -EINVAL;
+                }
+
+                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                           "%s: NL80211_TDLS_ENABLE_LINK for peer "
+                           MAC_ADDRESS_STR" link_status: %d",
+                           __func__, MAC_ADDR_ARRAY(peer), pTdlsPeer->link_status);
+
                 if (!TDLS_STA_INDEX_VALID(pTdlsPeer->staId))
                 {
-                    hddLog(VOS_TRACE_LEVEL_ERROR, "%s: Invalid Staion Index %u "
-                           MAC_ADDRESS_STR " failed",
-                           __func__, pTdlsPeer->staId, MAC_ADDR_ARRAY(peer));
+                    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                               "%s: invalid sta index %u for "
+                                MAC_ADDRESS_STR" TDLS_ENABLE_LINK failed",
+                                __func__, pTdlsPeer->staId, MAC_ADDR_ARRAY(peer));
                     return -EINVAL;
                 }
 
@@ -9757,6 +9761,21 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
             break;
         case NL80211_TDLS_DISABLE_LINK:
             {
+                pTdlsPeer = wlan_hdd_tdls_find_peer(pAdapter, peer, TRUE);
+
+                if ( NULL == pTdlsPeer ) {
+                    VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                               "%s: peer matching "MAC_ADDRESS_STR
+                               " not found, ignore NL80211_TDLS_DISABLE_LINK",
+                                __func__, MAC_ADDR_ARRAY(peer));
+                    return -EINVAL;
+                }
+
+                VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                           "%s: NL80211_TDLS_DISABLE_LINK for peer "
+                            MAC_ADDRESS_STR " link_status: %d",
+                            __func__, MAC_ADDR_ARRAY(peer), pTdlsPeer->link_status);
+
                 if(TDLS_STA_INDEX_VALID(pTdlsPeer->staId))
                 {
                     long status;
@@ -9786,7 +9805,82 @@ static int wlan_hdd_cfg80211_tdls_oper(struct wiphy *wiphy, struct net_device *d
             }
             break;
         case NL80211_TDLS_TEARDOWN:
+            {
+                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                          "%s : NL80211_TDLS_TEARDOWN for " MAC_ADDRESS_STR,
+                          __func__, MAC_ADDR_ARRAY(peer));
+
+                if ( (FALSE == pHddCtx->cfg_ini->fTDLSExternalControl) ||
+                     (FALSE == pHddCtx->cfg_ini->fEnableTDLSImplicitTrigger) ) {
+
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                              "%s: NL80211_TDLS_TEARDOWN, either External control or Implicit trigger not enabled",
+                              __func__);
+                    return -ENOTSUPP;
+                }
+
+
+                pTdlsPeer = wlan_hdd_tdls_find_peer(pAdapter, peer, TRUE);
+
+                if ( NULL == pTdlsPeer ) {
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                              "%s: peer matching "MAC_ADDRESS_STR
+                              " not found, ignore NL80211_TDLS_TEARDOWN",
+                              __func__, MAC_ADDR_ARRAY(peer));
+                    return -EINVAL;
+                }
+                else {
+                    wlan_hdd_tdls_indicate_teardown(pAdapter, pTdlsPeer,
+                                       eSIR_MAC_TDLS_TEARDOWN_UNSPEC_REASON);
+                }
+
+                if (0 != wlan_hdd_tdls_set_force_peer(pAdapter, peer, FALSE)) {
+
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                              "%s NL80211_TDLS_TEARDOWN: Set force peer failed for peer "
+                               MAC_ADDRESS_STR, __func__, MAC_ADDR_ARRAY(peer));
+                    return -EINVAL;
+                }
+                break;
+            }
         case NL80211_TDLS_SETUP:
+            {
+                hddTdlsPeer_t *pTdlsPeer;
+                VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
+                          " %s : NL80211_TDLS_SETUP for " MAC_ADDRESS_STR,
+                          __func__, MAC_ADDR_ARRAY(peer));
+
+                if ( (FALSE == pHddCtx->cfg_ini->fTDLSExternalControl) ||
+                     (FALSE == pHddCtx->cfg_ini->fEnableTDLSImplicitTrigger) ) {
+
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                              "%s: NL80211_TDLS_SETUP, either External control or Implicit trigger not enabled",
+                              __func__);
+                    return -ENOTSUPP;
+                }
+
+                /* To cater the requirement of establishing the TDLS link
+                 * irrespective of the data traffic , get an entry of TDLS peer.
+                 */
+                pTdlsPeer = wlan_hdd_tdls_get_peer(pAdapter, peer);
+
+                if (pTdlsPeer == NULL) {
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                              "%s: peer "MAC_ADDRESS_STR
+                              " does not exist, NL80211_TDLS_SETUP failed",
+                               __func__, MAC_ADDR_ARRAY(peer));
+                    return -EINVAL;
+                }
+
+                if (0 != wlan_hdd_tdls_set_force_peer(pAdapter, peer, TRUE)) {
+
+                    VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                              "%s NL80211_TDLS_SETUP: Set force peer failed for peer "
+                               MAC_ADDRESS_STR, __func__, MAC_ADDR_ARRAY(peer));
+                    return -EINVAL;
+                }
+                break;
+            }
         case NL80211_TDLS_DISCOVERY_REQ:
             /* We don't support in-driver setup/teardown/discovery */
             VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_WARN,

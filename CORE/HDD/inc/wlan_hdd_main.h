@@ -1123,6 +1123,18 @@ typedef struct
    v_TIME_t    lastFrameTs;
 }hdd_traffic_monitor_t;
 
+#define  MAX_MOD_LOGLEVEL 10
+typedef struct
+{
+    v_U8_t enable;
+    v_U8_t dl_type;
+    v_U8_t dl_report;
+    v_U8_t dl_loglevel;
+    v_U8_t index;
+    v_U32_t dl_mod_loglevel[MAX_MOD_LOGLEVEL];
+
+}fw_log_info;
+
 /** Adapter stucture definition */
 
 struct hdd_context_s
@@ -1289,8 +1301,8 @@ struct hdd_context_s
     /* TDLS peer connected count */
     tANI_U16 connected_peer_count;
     tdls_scan_context_t tdls_scan_ctxt;
-   /* Lock to avoid race condition during TDLS operations*/
-   struct mutex tdls_lock;
+    /* Lock to avoid race condition during TDLS operations*/
+    struct mutex tdls_lock;
 #endif
 
     hdd_traffic_monitor_t traffic_monitor;
@@ -1374,6 +1386,8 @@ struct hdd_context_s
 #endif
 
     v_BOOL_t btCoexModeSet;
+
+    fw_log_info fw_log_settings;
 };
 
 
@@ -1531,4 +1545,5 @@ void wlan_hdd_send_svc_nlink_msg(int type);
 void wlan_hdd_cfg80211_stats_ext_init(hdd_context_t *pHddCtx);
 #endif
 
+void hdd_update_macaddr(hdd_config_t *cfg_ini, v_MACADDR_t hw_macaddr);
 #endif    // end #if !defined( WLAN_HDD_MAIN_H )

@@ -5428,7 +5428,7 @@ void hdd_getBand_helper(hdd_context_t *pHddCtx, int *pBand)
  *     for third interface it will be hw_macaddr[0](bit5..7) + 2, etc.
  */
 
-static void hdd_update_macaddr(hdd_config_t *cfg_ini, v_MACADDR_t hw_macaddr)
+void hdd_update_macaddr(hdd_config_t *cfg_ini, v_MACADDR_t hw_macaddr)
 {
     int8_t i;
     u_int8_t macaddr_b0, tmp_br0;
@@ -5532,8 +5532,6 @@ static void hdd_update_tgt_ht_cap(hdd_context_t *hdd_ctx,
     /* Set the LDPC capability */
     phtCapInfo->advCodingCap = cfg->ht_rx_ldpc;
 
-    if (phtCapInfo->txSTBC && !cfg->ht_tx_stbc)
-        phtCapInfo->txSTBC = cfg->ht_tx_stbc;
 
     if (pconfig->ShortGI20MhzEnable && !cfg->ht_sgi_20)
         pconfig->ShortGI20MhzEnable = cfg->ht_sgi_20;
@@ -5549,6 +5547,12 @@ static void hdd_update_tgt_ht_cap(hdd_context_t *hdd_ctx,
     {
         pconfig->enable2x2 = 0;
     }
+    if (!(cfg->ht_tx_stbc && pconfig->enable2x2))
+    {
+        pconfig->enableTxSTBC = 0;
+    }
+    phtCapInfo->txSTBC = pconfig->enableTxSTBC;
+
     status = ccmCfgSetInt(hdd_ctx->hHal, WNI_CFG_HT_CAP_INFO,
                           *(tANI_U16 *)phtCapInfo, NULL, eANI_BOOLEAN_FALSE);
     if (status != eHAL_STATUS_SUCCESS)
@@ -7367,6 +7371,9 @@ VOS_STATUS hdd_init_station_mode( hdd_adapter_t *pAdapter )
 #endif
 
    //Set the Connection State to Not Connected
+   hddLog(VOS_TRACE_LEVEL_INFO,
+            "%s: Set HDD connState to eConnectionState_NotConnected",
+                   __func__);
    pHddStaCtx->conn_info.connState = eConnectionState_NotConnected;
 
    //Set the default operation channel
@@ -8728,6 +8735,9 @@ VOS_STATUS hdd_reconnect_all_adapters( hdd_context_t *pHddCtx )
          hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
          hdd_wext_state_t *pWextState = WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
 
+         hddLog(VOS_TRACE_LEVEL_INFO,
+            "%s: Set HDD connState to eConnectionState_NotConnected",
+                   __func__);
          pHddStaCtx->conn_info.connState = eConnectionState_NotConnected;
          init_completion(&pAdapter->disconnect_comp_var);
          sme_RoamDisconnect(pHddCtx->hHal, pAdapter->sessionId,
@@ -10361,6 +10371,7 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
    hdd_config_t *pConfig;
 #endif
    int ret;
+   int i;
    struct wiphy *wiphy;
 #ifdef QCA_WIFI_2_0
    adf_os_device_t adf_ctx;
@@ -10523,6 +10534,16 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
       goto err_config;
    }
 
+   /* Initialize struct for saving f/w log setting will be used
+   after ssr */
+   pHddCtx->fw_log_settings.enable = pHddCtx->cfg_ini->enablefwlog;
+   pHddCtx->fw_log_settings.dl_type = 0;
+   pHddCtx->fw_log_settings.dl_report = 0;
+   pHddCtx->fw_log_settings.dl_loglevel = 0;
+   pHddCtx->fw_log_settings.index = 0;
+   for (i = 0; i < MAX_MOD_LOGLEVEL; i++) {
+       pHddCtx->fw_log_settings.dl_mod_loglevel[i] = 0;
+   }
    // Update VOS trace levels based upon the cfg.ini
    hdd_vos_trace_enable(VOS_MODULE_ID_BAP,
                         pHddCtx->cfg_ini->vosTraceEnableBAP);

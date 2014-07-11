@@ -4548,6 +4548,7 @@ static int iw_setint_getnone(struct net_device *dev, struct iw_request_info *inf
     tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pAdapter);
     hdd_station_ctx_t *pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
     hdd_wext_state_t  *pWextState =  WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
+    hdd_context_t     *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     tSmeConfigParams smeConfig;
     int *value = (int *)extra;
     int sub_cmd = value[0];
@@ -5437,6 +5438,7 @@ static int iw_setint_getnone(struct net_device *dev, struct iw_request_info *inf
          case WE_DBGLOG_LOG_LEVEL:
          {
               hddLog(LOG1, "WE_DBGLOG_LOG_LEVEL val %d", set_value);
+              pHddCtx->fw_log_settings.dl_loglevel = set_value;
               ret = process_wma_set_command((int)pAdapter->sessionId,
                                            (int)WMI_DBGLOG_LOG_LEVEL,
                                            set_value, DBG_CMD);
@@ -5464,6 +5466,7 @@ static int iw_setint_getnone(struct net_device *dev, struct iw_request_info *inf
          case WE_DBGLOG_MODULE_ENABLE:
          {
               hddLog(LOG1, "WE_DBGLOG_MODULE_ENABLE val %d", set_value);
+              pHddCtx->fw_log_settings.enable = set_value;
               ret = process_wma_set_command((int)pAdapter->sessionId,
                                            (int)WMI_DBGLOG_MODULE_ENABLE,
                                            set_value, DBG_CMD);
@@ -5473,24 +5476,34 @@ static int iw_setint_getnone(struct net_device *dev, struct iw_request_info *inf
          case WE_DBGLOG_MODULE_DISABLE:
          {
               hddLog(LOG1, "WE_DBGLOG_MODULE_DISABLE val %d", set_value);
+              pHddCtx->fw_log_settings.enable = set_value;
               ret = process_wma_set_command((int)pAdapter->sessionId,
                                            (int)WMI_DBGLOG_MODULE_DISABLE,
                                            set_value, DBG_CMD);
               break;
          }
-
          case WE_DBGLOG_MOD_LOG_LEVEL:
          {
               hddLog(LOG1, "WE_DBGLOG_MOD_LOG_LEVEL val %d", set_value);
+
+              if (pHddCtx->fw_log_settings.index >= MAX_MOD_LOGLEVEL) {
+                 pHddCtx->fw_log_settings.index = 0;
+              }
+
+              pHddCtx->fw_log_settings.dl_mod_loglevel[pHddCtx->
+                                        fw_log_settings.index] = set_value;
+              pHddCtx->fw_log_settings.index++;
+
               ret = process_wma_set_command((int)pAdapter->sessionId,
                                            (int)WMI_DBGLOG_MOD_LOG_LEVEL,
-                                           set_value, DBG_CMD);
+                                            set_value, DBG_CMD);
               break;
          }
 
          case WE_DBGLOG_TYPE:
          {
               hddLog(LOG1, "WE_DBGLOG_TYPE val %d", set_value);
+              pHddCtx->fw_log_settings.dl_type = set_value;
               ret = process_wma_set_command((int)pAdapter->sessionId,
                                            (int)WMI_DBGLOG_TYPE,
                                            set_value, DBG_CMD);
@@ -5499,6 +5512,7 @@ static int iw_setint_getnone(struct net_device *dev, struct iw_request_info *inf
         case WE_DBGLOG_REPORT_ENABLE:
         {
              hddLog(LOG1, "WE_DBGLOG_REPORT_ENABLE val %d", set_value);
+             pHddCtx->fw_log_settings.dl_report = set_value;
              ret = process_wma_set_command((int)pAdapter->sessionId,
                                           (int)WMI_DBGLOG_REPORT_ENABLE,
                                           set_value, DBG_CMD);
@@ -9506,7 +9520,8 @@ int hdd_setBand(struct net_device *dev, u8 ui_band)
                   * first, then change the band*/
 
                  hddLog(VOS_TRACE_LEVEL_INFO,
-                         "%s STA (Device mode=%d) connected in band %u, Changing band to %u, Issuing Disconnect",
+                         "%s STA (Device mode=%d) connected in band %u, Changing band to %u, Issuing Disconnect"
+                         "Set HDD connState to eConnectionState_Disconnecting",
                             __func__, pAdapter->device_mode,
                             currBand, band);
 
