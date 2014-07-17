@@ -241,6 +241,7 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 /* Private ioctl for packet power save */
 #define WE_PPS_5G_EBT                         83
 #define WE_SET_CTS_CBW                        84
+#define WE_SET_CHANNEL_RANGE                  85  // Motorola, IKDREL3KK-5698
 
 /* Private ioctls and their sub-ioctls */
 #define WLAN_PRIV_SET_NONE_GET_INT    (SIOCIWFIRSTPRIV + 1)
@@ -4604,9 +4605,17 @@ static int iw_setint_getnone(struct net_device *dev, struct iw_request_info *inf
     hdd_wext_state_t  *pWextState =  WLAN_HDD_GET_WEXT_STATE_PTR(pAdapter);
     hdd_context_t     *pHddCtx = WLAN_HDD_GET_CTX(pAdapter);
     tSmeConfigParams smeConfig;
+    //BEGIN MOT a19110 IKDREL3KK-5698
+#if 0
     int *value = (int *)extra;
     int sub_cmd = value[0];
     int set_value = value[1];
+#endif
+    int cmd_len = wrqu->data.length;
+    int *value = (int *) kmalloc(cmd_len+1, GFP_KERNEL);  // Motorola, IKHSS7-39028
+    int sub_cmd;
+    int set_value;
+    //END IKDREL3KK-5698
     int ret = 0; /* success */
     int enable_pbm, enable_mp;
 
@@ -4622,6 +4631,22 @@ static int iw_setint_getnone(struct net_device *dev, struct iw_request_info *inf
                                   "%s:LOGP in Progress. Ignore!!!", __func__);
         return -EBUSY;
     }
+
+    //BEGIN MOT a19110 IKDREL3KK-5698
+    if(value == NULL)
+        return -ENOMEM;
+
+    if(copy_from_user((char *) value, (char*)(wrqu->data.pointer), cmd_len)) {
+        hddLog(VOS_TRACE_LEVEL_FATAL, "%s -- copy_from_user --data pointer failed! bailing",
+               __FUNCTION__);
+        kfree(value);
+        return -EFAULT;
+    }
+
+    sub_cmd = value[0];
+    set_value = value[1];
+    kfree(value);
+    //END IKDREL3KK-5698
 
     switch(sub_cmd)
     {
@@ -5979,6 +6004,31 @@ static int iw_setint_getnone(struct net_device *dev, struct iw_request_info *inf
                             set_value, VDEV_CMD);
             break;
        }
+       //BEGIN MOT a19110 IKDREL3KK-5698
+       case WE_SET_CHANNEL_RANGE:
+       {
+           int startChannel, endChannel;
+
+           if (set_value == 3) {
+               startChannel = 153;
+               endChannel   = 165;
+           } else if (set_value == 2) {
+               startChannel = 104;
+               endChannel   = 140;
+           } else if (set_value == 1) {
+               startChannel = 40;
+               endChannel   = 64;
+           } else {
+               set_value = 0;
+               startChannel = 1;
+               endChannel   = 14;
+           }
+
+           ret = iw_softap_set_channel_range( dev, startChannel, endChannel, set_value);
+
+           break;
+       }
+       // END IKDREL3KK-5698
         default:
         {
            hddLog(LOGE, "%s: Invalid sub command %d", __func__, sub_cmd);
@@ -10102,6 +10152,13 @@ static const struct iw_priv_args we_private_args[] = {
     {   WE_SET_EARLY_RX_DRIFT_SAMPLE,
         IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
         0, "erx_dri_sample" },
+
+    //BEGIN MOT a19110 IKDREL3KK-5698
+    {   WE_SET_CHANNEL_RANGE,
+        IW_PRIV_TYPE_INT | IW_PRIV_SIZE_FIXED | 1,
+        0,
+        "setChannelRange" },
+    //END IKDREL3KK-5698
 
     {   WLAN_PRIV_SET_NONE_GET_INT,
         0,
