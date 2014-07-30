@@ -5553,6 +5553,26 @@ static void hdd_update_tgt_ht_cap(hdd_context_t *hdd_ctx,
     else
     {
         pconfig->enable2x2 = 0;
+
+        /* 1x1 */
+        /* Update Rx Highest Long GI data Rate */
+        if (ccmCfgSetInt(hdd_ctx->hHal,
+                    WNI_CFG_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE,
+                    HDD_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE_1_1, NULL,
+                    eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
+        {
+            hddLog(LOGE, "Could not pass on "
+                    "WNI_CFG_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE to CCM");
+        }
+
+        /* Update Tx Highest Long GI data Rate */
+        if (ccmCfgSetInt(hdd_ctx->hHal, WNI_CFG_VHT_TX_HIGHEST_SUPPORTED_DATA_RATE,
+                    HDD_VHT_TX_HIGHEST_SUPPORTED_DATA_RATE_1_1, NULL,
+                    eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
+        {
+            hddLog(LOGE, "Could not pass on "
+                    "HDD_VHT_RX_HIGHEST_SUPPORTED_DATA_RATE_1_1 to CCM");
+        }
     }
     if (!(cfg->ht_tx_stbc && pconfig->enable2x2))
     {
@@ -10463,7 +10483,6 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
    init_completion(&pHddCtx->full_pwr_comp_var);
    init_completion(&pHddCtx->standby_comp_var);
    init_completion(&pHddCtx->req_bmps_comp_var);
-   init_completion(&pHddCtx->wiphy_channel_update_event);
 
 #ifdef CONFIG_ENABLE_LINUX_REG
    init_completion(&pHddCtx->linux_reg_req);
@@ -10504,7 +10523,6 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
    ((VosContextType*)(pVosContext))->adf_ctx = adf_ctx;
 #endif /* QCA_WIFI_2_0 */
 
-   pHddCtx->nEnableStrictRegulatoryForFCC = FALSE;
    // Load all config first as TL config is needed during vos_open
    pHddCtx->cfg_ini = (hdd_config_t*) kmalloc(sizeof(hdd_config_t), GFP_KERNEL);
    if(pHddCtx->cfg_ini == NULL)
