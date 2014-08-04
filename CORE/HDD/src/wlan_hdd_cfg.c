@@ -2842,6 +2842,13 @@ REG_VARIABLE( CFG_TDLS_EXTERNAL_CONTROL, WLAN_PARAM_Integer,
              CFG_VHT_SU_BEAMFORMEE_CAP_FEATURE_MIN,
              CFG_VHT_SU_BEAMFORMEE_CAP_FEATURE_MAX ),
 
+   REG_VARIABLE( CFG_VHT_ENABLE_TXBF_IN_20MHZ, WLAN_PARAM_Integer,
+                 hdd_config_t, enableTxBFin20MHz,
+                 VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+                 CFG_VHT_ENABLE_TXBF_IN_20MHZ_DEFAULT,
+                 CFG_VHT_ENABLE_TXBF_IN_20MHZ_MIN,
+                 CFG_VHT_ENABLE_TXBF_IN_20MHZ_MAX ),
+
    REG_VARIABLE( CFG_VHT_CSN_BEAMFORMEE_ANT_SUPPORTED, WLAN_PARAM_Integer,
              hdd_config_t, txBFCsnValue,
              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
@@ -3407,6 +3414,13 @@ REG_VARIABLE( CFG_ADVERTISE_CONCURRENT_OPERATION_NAME , WLAN_PARAM_Integer,
               CFG_ADVERTISE_CONCURRENT_OPERATION_DEFAULT,
               CFG_ADVERTISE_CONCURRENT_OPERATION_MIN,
               CFG_ADVERTISE_CONCURRENT_OPERATION_MAX ),
+
+   REG_VARIABLE( CFG_ENABLE_SELF_RECOVERY, WLAN_PARAM_Integer,
+              hdd_config_t, enableSelfRecovery,
+              VAR_FLAGS_OPTIONAL | VAR_FLAGS_RANGE_CHECK_ASSUME_DEFAULT,
+              CFG_ENABLE_SELF_RECOVERY_DEFAULT,
+              CFG_ENABLE_SELF_RECOVERY_MIN,
+              CFG_ENABLE_SELF_RECOVERY_MAX ),
 };
 
 /*
@@ -3820,6 +3834,10 @@ static void print_hdd_cfg(hdd_context_t *pHddCtx)
   VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
            "Name = [gEnableSifsBurst] Value = [%u]",
                    pHddCtx->cfg_ini->enableSifsBurst);
+
+  VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO_HIGH,
+           "Name = [gEnableSelfRecovery] Value = [%u]",
+                   pHddCtx->cfg_ini->enableSelfRecovery);
 }
 
 #define CFG_VALUE_MAX_LEN 256
@@ -5017,6 +5035,14 @@ v_BOOL_t hdd_update_config_dat( hdd_context_t *pHddCtx )
                "Failure: Could not set value for WNI_CFG_DFS_MASTER_ENABLED");
     }
 
+    if (ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_VHT_ENABLE_TXBF_20MHZ,
+                     pConfig->enableTxBFin20MHz, NULL,
+                     eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE) {
+        fStatus = FALSE;
+        hddLog(LOGE,
+               "Failure: Could not set value for WNI_CFG_VHT_ENABLE_TXBF_20MHZ");
+    }
+
     if(ccmCfgSetInt(pHddCtx->hHal, WNI_CFG_HEART_BEAT_THRESHOLD, pConfig->HeartbeatThresh24,
                         NULL, eANI_BOOLEAN_FALSE) == eHAL_STATUS_FAILURE)
     {
@@ -5618,6 +5644,8 @@ VOS_STATUS hdd_set_sme_config( hdd_context_t *pHddCtx )
    smeConfig.fEnableDebugLog = pHddCtx->cfg_ini->gEnableDebugLog;
 
    smeConfig.enable5gEBT = pHddCtx->cfg_ini->enable5gEBT;
+
+   smeConfig.enableSelfRecovery = pHddCtx->cfg_ini->enableSelfRecovery;
 
    halStatus = sme_UpdateConfig( pHddCtx->hHal, &smeConfig);
    if ( !HAL_STATUS_SUCCESS( halStatus ) )

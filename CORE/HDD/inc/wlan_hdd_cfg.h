@@ -2055,6 +2055,11 @@ typedef enum
 #define CFG_VHT_CSN_BEAMFORMEE_ANT_SUPPORTED_MAX     ( WNI_CFG_VHT_CSN_BEAMFORMEE_ANT_SUPPORTED_STAMAX )
 #define CFG_VHT_CSN_BEAMFORMEE_ANT_SUPPORTED_DEFAULT ( WNI_CFG_VHT_CSN_BEAMFORMEE_ANT_SUPPORTED_STAMAX - 1)
 
+#define CFG_VHT_ENABLE_TXBF_IN_20MHZ               "gEnableTxBFin20MHz"
+#define CFG_VHT_ENABLE_TXBF_IN_20MHZ_MIN           ( 0 )
+#define CFG_VHT_ENABLE_TXBF_IN_20MHZ_MAX           ( 1 )
+#define CFG_VHT_ENABLE_TXBF_IN_20MHZ_DEFAULT       ( 0 )
+
 #endif
 
 
@@ -2435,6 +2440,11 @@ This feature requires the dependent cfg.ini "gRoamPrefer5GHz" set to 1 */
 #define CFG_ENABLE_SIFS_BURST_MAX                  ( 1 )
 #define CFG_ENABLE_SIFS_BURST_DEFAULT              ( 0 )
 
+#define CFG_ENABLE_SELF_RECOVERY                   "gEnableSelfRecovery"
+#define CFG_ENABLE_SELF_RECOVERY_MIN               ( 0 )
+#define CFG_ENABLE_SELF_RECOVERY_MAX               ( 1 )
+#define CFG_ENABLE_SELF_RECOVERY_DEFAULT           ( 0 )
+
 /*---------------------------------------------------------------------------
   Type declarations
   -------------------------------------------------------------------------*/
@@ -2791,6 +2801,7 @@ typedef struct
    v_BOOL_t                    enableMuBformee;
    v_BOOL_t                    enableVhtpAid;
    v_BOOL_t                    enableVhtGid;
+   v_BOOL_t                    enableTxBFin20MHz;
 #endif
    v_U8_t                      enableAmpduPs;
    v_U8_t                      enableHtSmps;
@@ -2947,6 +2958,7 @@ typedef struct
 #endif
    v_BOOL_t                    advertiseConcurrentOperation;
    v_BOOL_t                    enableSifsBurst;
+   v_BOOL_t                    enableSelfRecovery;
 } hdd_config_t;
 
 /*---------------------------------------------------------------------------

@@ -2579,6 +2579,24 @@ v_BOOL_t vos_is_packet_log_enabled(void)
    return pHddCtx->cfg_ini->enablePacketLog;
 }
 
+#if defined(CONFIG_CNSS)
+/* worker thread to recover when target does not respond over PCIe */
+void self_recovery_work_handler(struct work_struct *recovery)
+{
+    cnss_device_self_recovery();
+}
+
+static DECLARE_WORK(self_recovery_work, self_recovery_work_handler);
+#endif
+
+void vos_trigger_recovery(void)
+{
+#ifdef CONFIG_CNSS
+    vos_set_logp_in_progress(VOS_MODULE_ID_VOSS, TRUE);
+    schedule_work(&self_recovery_work);
+#endif
+}
+
 v_U64_t vos_get_monotonic_boottime(void)
 {
 #ifdef CONFIG_CNSS

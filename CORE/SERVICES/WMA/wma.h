@@ -77,10 +77,11 @@
 /** Private **/
 #define WMA_CFG_NV_DNLD_TIMEOUT            500
 #define WMA_READY_EVENTID_TIMEOUT          2000
-#define WMA_TGT_SUSPEND_COMPLETE_TIMEOUT   1000
+#define WMA_TGT_SUSPEND_COMPLETE_TIMEOUT   3000
 #define WMA_WAKE_LOCK_TIMEOUT              1000
 #define WMA_MAX_RESUME_RETRY               1000
 #define WMA_RESUME_TIMEOUT                 3000
+#define WMA_TGT_WOW_TX_COMPLETE_TIMEOUT    2000
 #define MAX_MEM_CHUNKS                     32
 /*
    In prima 12 HW stations are supported including BCAST STA(staId 0)
@@ -536,6 +537,7 @@ typedef struct {
 	vos_event_t wma_ready_event;
 	vos_event_t wma_resume_event;
 	vos_event_t target_suspend;
+	vos_event_t wow_tx_complete;
 	t_cfg_nv_param cfg_nv;
 
 	v_U16_t max_station;
@@ -1217,6 +1219,8 @@ struct wma_tx_ack_work_ctx {
 #define WMA_TARGET_REQ_TYPE_VDEV_START 0x1
 #define WMA_TARGET_REQ_TYPE_VDEV_STOP  0x2
 #define WMA_TARGET_REQ_TYPE_VDEV_DEL   0x3
+
+#define WMA_VDEV_START_REQUEST_TIMEOUT (3000) /* 3 seconds */
 
 struct wma_target_req {
 	vos_timer_t event_timeout;
