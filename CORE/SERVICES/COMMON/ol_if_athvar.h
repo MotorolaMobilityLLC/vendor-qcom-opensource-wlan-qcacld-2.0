@@ -212,6 +212,7 @@ struct ol_softc {
     unsigned long ramdump_address;
     unsigned long ramdump_size;
 #endif
+    bool                    has_fw_dump;
 };
 
 #ifdef PERE_IP_HDR_ALIGNMENT_WAR

@@ -45,6 +45,7 @@
 /*--------------------------------------------------------------------------
   Include Files
   ------------------------------------------------------------------------*/
+extern void vos_get_fw_dump(void);
 
 /**----------------------------------------------------------------------------
 
@@ -129,6 +130,7 @@ void __printf(3,4) vos_snprintf(char *strBuffer, unsigned  int size,
 #define VOS_BUG( _condition ) do {                                      \
         if ( ! ( _condition ) )                                         \
         {                                                               \
+            vos_get_fw_dump();                                          \
             printk(KERN_CRIT "VOS BUG in %s Line %d\n", __func__, __LINE__); \
             BUG_ON(1);                                                  \
         }                                                               \

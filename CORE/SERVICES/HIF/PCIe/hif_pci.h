@@ -41,6 +41,8 @@
 
 #include <adf_os_atomic.h> /* adf_os_atomic_read */
 #include "vos_lock.h"
+#include "hif_msg_based.h"
+
 struct HIF_CE_completion_state {
     struct HIF_CE_completion_state *next;
     int send_or_recv;

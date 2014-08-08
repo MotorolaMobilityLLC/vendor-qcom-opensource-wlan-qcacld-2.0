@@ -93,6 +93,9 @@
 #include "htc_api.h"
 #endif /* #ifndef QCA_WIFI_ISOC */
 #endif /* #ifdef QCA_WIFI_2_0 */
+#if defined(HIF_PCI)
+#include "hif_pci.h"
+#endif /* #ifdef HIF_PCI */
 
 
 /*---------------------------------------------------------------------------
@@ -2608,3 +2611,54 @@ v_U64_t vos_get_monotonic_boottime(void)
    return adf_os_ticks_to_msecs(adf_os_ticks());
 #endif
 }
+
+#if defined(HIF_PCI)
+void vos_get_fw_dump(void)
+{
+   void *vos_context = vos_get_global_context(VOS_MODULE_ID_HIF, NULL);
+   struct ol_softc *scn =  vos_get_context(VOS_MODULE_ID_HIF, vos_context);
+   struct hif_pci_softc *sc;
+   struct HIF_CE_state *hif_state;
+
+   if (!scn) {
+       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+           "%s: Fail to get FW dump since scn is NULL!", __func__);
+       return;
+   }
+
+   sc = scn->hif_sc;
+   if (!sc)
+       return;
+
+   hif_state = (struct HIF_CE_state *)sc->hif_device;
+   if (!hif_state)
+       return;
+
+   if (OL_TRGET_STATUS_RESET == scn->target_status) {
+       VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+           "%s: Target is already asserted, ignore!", __func__);
+       return;
+   }
+
+   adf_os_spin_lock_irqsave(&hif_state->suspend_lock);
+
+   if (hif_pci_check_soc_status(scn->hif_sc)
+       || dump_CE_register(scn)) {
+       goto out;
+   }
+
+   dump_CE_debug_register(scn->hif_sc);
+
+   if (ol_copy_ramdump(scn)) {
+       goto out;
+   }
+
+   scn->has_fw_dump = TRUE;
+   VOS_TRACE(VOS_MODULE_ID_VOSS, VOS_TRACE_LEVEL_ERROR,
+       "%s: RAM dump collecting completed!", __func__);
+
+out:
+   adf_os_spin_unlock_irqrestore(&hif_state->suspend_lock);
+   return;
+}
+#endif

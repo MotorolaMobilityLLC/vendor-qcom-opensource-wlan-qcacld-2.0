@@ -335,4 +335,7 @@ v_U64_t vos_get_monotonic_boottime(void);
 
 void vos_trigger_recovery(void);
 
+#if defined(HIF_PCI)
+void vos_get_fw_dump(void);
+#endif
 #endif // if !defined __VOS_API_H

@@ -1727,6 +1727,11 @@ void hif_pci_crash_shutdown(struct pci_dev *pdev)
         return;
     }
 
+    if (scn->has_fw_dump) {
+        printk("%s: FW dump is already copied, ignore!\n", __func__);
+        return;
+    }
+
     adf_os_spin_lock_irqsave(&hif_state->suspend_lock);
 
 #ifdef DEBUG
