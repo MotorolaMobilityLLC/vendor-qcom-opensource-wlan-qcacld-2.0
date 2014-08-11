@@ -6282,88 +6282,6 @@ VOS_STATUS sme_GetWcnssHardwareVersion(tHalHandle hHal,
 
 
 #ifdef FEATURE_WLAN_WAPI
-/* ---------------------------------------------------------------------------
-    \fn sme_RoamSetBKIDCache
-    \brief The SME API exposed to HDD to allow HDD to provde SME the BKID
-    candidate list.
-    \param hHal - Handle to the HAL. The HAL handle is returned by the HAL after
-    it is opened (by calling halOpen).
-    \param pBKIDCache - caller allocated buffer point to an array of tBkidCacheInfo
-    \param numItems - a variable that has the number of tBkidCacheInfo allocated
-    when retruning, this is the number of items put into pBKIDCache
-    \return eHalStatus - when fail, it usually means the buffer allocated is not
-    big enough and pNumItems has the number of tBkidCacheInfo.
-  ---------------------------------------------------------------------------*/
-eHalStatus sme_RoamSetBKIDCache( tHalHandle hHal, tANI_U32 sessionId, tBkidCacheInfo *pBKIDCache,
-                                 tANI_U32 numItems )
-{
-   eHalStatus status = eHAL_STATUS_FAILURE;
-   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-
-   status = sme_AcquireGlobalLock( &pMac->sme );
-   if ( HAL_STATUS_SUCCESS( status ) )
-   {
-       status = csrRoamSetBKIDCache( pMac, sessionId, pBKIDCache, numItems );
-       sme_ReleaseGlobalLock( &pMac->sme );
-   }
-
-   return (status);
-}
-
-/* ---------------------------------------------------------------------------
-    \fn sme_RoamGetBKIDCache
-    \brief The SME API exposed to HDD to allow HDD to request SME to return its
-    BKID cache.
-    \param hHal - Handle to the HAL. The HAL handle is returned by the HAL after
-    it is opened (by calling halOpen).
-    \param pNum - caller allocated memory that has the space of the number of
-    tBkidCacheInfo as input. Upon returned, *pNum has the needed number of entries
-    in SME cache.
-    \param pBkidCache - Caller allocated memory that contains BKID cache, if any,
-    upon return
-    \return eHalStatus - when fail, it usually means the buffer allocated is not
-    big enough.
-  ---------------------------------------------------------------------------*/
-eHalStatus sme_RoamGetBKIDCache(tHalHandle hHal, tANI_U32 *pNum,
-                                tBkidCacheInfo *pBkidCache)
-{
-   eHalStatus status = eHAL_STATUS_FAILURE;
-   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-
-   status = sme_AcquireGlobalLock( &pMac->sme );
-   if ( HAL_STATUS_SUCCESS( status ) )
-   {
-       smsLog(pMac, LOGE, FL(" !!!!!!!!!!!!!!!!!!SessionId is hardcoded"));
-       status = csrRoamGetBKIDCache( pMac, 0, pNum, pBkidCache );
-       sme_ReleaseGlobalLock( &pMac->sme );
-   }
-
-   return (status);
-}
-
-/* ---------------------------------------------------------------------------
-    \fn sme_RoamGetNumBKIDCache
-    \brief The SME API exposed to HDD to allow HDD to request SME to return the
-    number of BKID cache entries.
-    \param hHal - Handle to the HAL. The HAL handle is returned by the HAL after
-    it is opened (by calling halOpen).
-    \return tANI_U32 - the number of BKID cache entries.
-  ---------------------------------------------------------------------------*/
-tANI_U32 sme_RoamGetNumBKIDCache(tHalHandle hHal, tANI_U32 sessionId)
-{
-   eHalStatus status = eHAL_STATUS_FAILURE;
-   tpAniSirGlobal pMac = PMAC_STRUCT( hHal );
-   tANI_U32 numBkidCache = 0;
-
-   status = sme_AcquireGlobalLock( &pMac->sme );
-   if ( HAL_STATUS_SUCCESS( status ) )
-   {
-       numBkidCache = csrRoamGetNumBKIDCache( pMac, sessionId );
-       sme_ReleaseGlobalLock( &pMac->sme );
-   }
-
-   return (numBkidCache);
-}
 
 /* ---------------------------------------------------------------------------
     \fn sme_ScanGetBKIDCandidateList
@@ -11510,7 +11428,8 @@ eHalStatus sme_PsOffloadDisablePowerSave (tHalHandle hHal, tANI_U32 sessionId)
 }
 
 eHalStatus sme_PsOffloadEnableDeferredPowerSave (tHalHandle hHal,
-                                                 tANI_U32 sessionId)
+                                                 tANI_U32 sessionId,
+                                                 tANI_BOOLEAN isReassoc)
 {
    eHalStatus status = eHAL_STATUS_FAILURE;
    tpAniSirGlobal pMac = PMAC_STRUCT(hHal);
@@ -11518,7 +11437,8 @@ eHalStatus sme_PsOffloadEnableDeferredPowerSave (tHalHandle hHal,
    status = sme_AcquireGlobalLock(&pMac->sme);
    if (HAL_STATUS_SUCCESS( status ))
    {
-       status =  PmcOffloadEnableDeferredStaModePowerSave(hHal, sessionId);
+       status =  PmcOffloadEnableDeferredStaModePowerSave(hHal, sessionId,
+                                                          isReassoc);
        sme_ReleaseGlobalLock( &pMac->sme );
    }
    return (status);
@@ -12253,6 +12173,26 @@ tANI_BOOLEAN sme_staInMiddleOfRoaming(tHalHandle hHal)
 
     if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme))) {
         ret = csrNeighborMiddleOfRoaming(hHal);
+        sme_ReleaseGlobalLock(&pMac->sme);
+    }
+    return ret;
+}
+
+/* ---------------------------------------------------------------------------
+    \fn sme_PsOffloadIsStaInPowerSave
+    \brief  This function returns TRUE if STA is in power save
+    \param  hHal - HAL handle for device
+    \param  sessionId - Session Identifier
+    \return TRUE or FALSE
+    -------------------------------------------------------------------------*/
+tANI_BOOLEAN sme_PsOffloadIsStaInPowerSave(tHalHandle hHal, tANI_U8 sessionId)
+{
+    tpAniSirGlobal pMac   = PMAC_STRUCT( hHal );
+    eHalStatus     status = eHAL_STATUS_SUCCESS;
+    tANI_BOOLEAN   ret    = FALSE;
+
+    if (eHAL_STATUS_SUCCESS == (status = sme_AcquireGlobalLock(&pMac->sme))) {
+        ret = pmcOffloadIsStaInPowerSave(pMac, sessionId);
         sme_ReleaseGlobalLock(&pMac->sme);
     }
     return ret;
