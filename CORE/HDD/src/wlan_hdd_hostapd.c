@@ -1163,12 +1163,30 @@ static iw_softap_setparam(struct net_device *dev,
 {
     hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
     tHalHandle hHal;
-    int *value = (int *)(wrqu->data.pointer);
-    int sub_cmd = value[0];
-    int set_value = value[1];
+    //BEGIN MOT a19110 IKDREL3KK-11113 Fix iwpriv panic
+    int *value;
+    int sub_cmd;
+    int set_value;
+    int *tmp = (int *) extra;
+    //END IKDREL3KK-11113
     eHalStatus status;
     int ret = 0; /* success */
     v_CONTEXT_t pVosContext;
+
+
+    //BEGIN MOT a19110 IKDREL3KK-11113 Fix iwpriv panic
+    if(tmp[0] < 0 || tmp[0] > QCASAP_SET_TM_LEVEL)
+    {
+        value = (int *)(wrqu->data.pointer);
+    }
+    else
+    {
+        value = (int *)extra;
+    }
+
+    sub_cmd = value[0];
+    set_value = value[1];
+    //END IKDREL3KK-11113
 
     if (!pHostapdAdapter || !pHostapdAdapter->pHddCtx)
     {
