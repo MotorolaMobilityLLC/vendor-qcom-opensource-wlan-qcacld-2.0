@@ -14056,6 +14056,8 @@ int wma_enable_wow_in_fw(WMA_HANDLE handle)
 	struct ol_softc *scn;
 	int host_credits;
 	int wmi_pending_cmds;
+	tpAniSirGlobal pMac = (tpAniSirGlobal)vos_get_context(VOS_MODULE_ID_PE,
+				wma->vos_context);
 
 	len = sizeof(wmi_wow_enable_cmd_fixed_param);
 
@@ -14105,8 +14107,14 @@ int wma_enable_wow_in_fw(WMA_HANDLE handle)
 		WMA_LOGE("Credits:%d; Pending_Cmds: %d",
 			wmi_get_host_credits(wma->wmi_handle),
 			wmi_get_pending_cmds(wma->wmi_handle));
-
+#ifdef CONFIG_CNSS
+		if (pMac->sme.enableSelfRecovery) {
+			vos_set_logp_in_progress(VOS_MODULE_ID_HIF, TRUE);
+			cnss_schedule_recovery_work();
+		}
+#else
 		VOS_BUG(0);
+#endif
 		wmi_set_target_suspend(wma->wmi_handle, FALSE);
 		return VOS_STATUS_E_FAILURE;
 	}
@@ -14876,6 +14884,8 @@ static VOS_STATUS wma_send_host_wakeup_ind_to_fw(tp_wma_handle wma)
 	VOS_STATUS vos_status = VOS_STATUS_SUCCESS;
 	int32_t len;
 	int ret;
+	tpAniSirGlobal pMac = (tpAniSirGlobal)vos_get_context(VOS_MODULE_ID_PE,
+				wma->vos_context);
 
 	len = sizeof(wmi_wow_hostwakeup_from_sleep_cmd_fixed_param);
 
@@ -14911,10 +14921,19 @@ static VOS_STATUS wma_send_host_wakeup_ind_to_fw(tp_wma_handle wma)
 		WMA_LOGP("%s: Pending commands %d credits %d", __func__,
 				wmi_get_pending_cmds(wma->wmi_handle),
 				wmi_get_host_credits(wma->wmi_handle));
-		if (!vos_is_logp_in_progress(VOS_MODULE_ID_HIF, NULL))
+		if (!vos_is_logp_in_progress(VOS_MODULE_ID_HIF, NULL)) {
+#ifdef CONFIG_CNSS
+			if (pMac->sme.enableSelfRecovery) {
+				vos_set_logp_in_progress(VOS_MODULE_ID_HIF,
+							TRUE);
+				cnss_schedule_recovery_work();
+			}
+#else
 			VOS_BUG(0);
-		else
+#endif
+		} else {
 			WMA_LOGE("%s: SSR in progress, ignore resume timeout", __func__);
+		}
 	} else {
 		WMA_LOGD("Host wakeup received");
 	}
