@@ -47,6 +47,13 @@
 #include <net/cnss.h>
 #endif
 
+#ifdef FEATURE_SECURE_FIRMWARE
+static struct {
+   u8 _Pad1[256];
+   u8 g_secure_fw_ptr[1048576];
+   u8 _Pad2[256];
+} fw_buf;
+
 static struct hash_fw fw_hash = {
 
 /* qwlan20.bin sha256sum hash */
@@ -82,6 +89,7 @@ static struct hash_fw fw_hash = {
 },
 
 };
+#endif
 
 static u_int32_t refclk_speed_to_hz[] = {
 	48000000, /* SOC_REFCLK_48_MHZ */
@@ -334,6 +342,16 @@ exit:
 	return status;
 }
 
+#ifdef FEATURE_SECURE_FIRMWARE
+static void check_data_sum(const u8* data, u32 data_size)
+{
+	int i = 0;
+	u32 total = 0;
+	for (; i < data_size; i++)
+		total = total + data[i];
+	pr_err("data_check_sum:%d\n", total);
+}
+
 static int ol_check_fw_hash(const u8* data, u32 data_size, ATH_BIN_FILE file)
 {
 	u8 *hash = NULL;
@@ -371,12 +389,17 @@ static int ol_check_fw_hash(const u8* data, u32 data_size, ATH_BIN_FILE file)
 	}
 
 #ifdef CONFIG_CNSS
+	pr_err("QCOM: Before Hash data_size:%d\n", data_size);
+	check_data_sum(data, data_size);
 	ret = cnss_get_sha_hash(data, data_size, "sha256", digest);
 
 	if (ret) {
 		pr_err("Sha256 Hash computation fialed err:%d\n", ret);
 		goto end;
 	}
+
+	pr_err("QCOM: After Hash data_size:%d\n", data_size);
+	check_data_sum(data, data_size);
 
 	if (OS_MEMCMP(hash, digest, SHA256_DIGEST_SIZE) != 0) {
 		pr_err("Hash Mismatch");
@@ -390,6 +413,7 @@ static int ol_check_fw_hash(const u8* data, u32 data_size, ATH_BIN_FILE file)
 end:
 	return ret;
 }
+#endif
 
 static int __ol_transfer_bin_file(struct ol_softc *scn, ATH_BIN_FILE file,
 				u_int32_t address, bool compressed)
@@ -408,9 +432,6 @@ static int __ol_transfer_bin_file(struct ol_softc *scn, ATH_BIN_FILE file,
 	int bin_off, bin_len;
 	SIGN_HEADER_T *sign_header;
 #endif
-	u8 *fw_ptr;
-	u32 fw_size;
-
 	int ret;
 
 	if (scn->enablesinglebinary && file != ATH_BOARD_DATA_FILE) {
@@ -545,24 +566,18 @@ static int __ol_transfer_bin_file(struct ol_softc *scn, ATH_BIN_FILE file,
 	fw_entry_size = fw_entry->size;
 	tempEeprom = NULL;
 
-	fw_size = fw_entry->size;
-	fw_ptr = OS_MALLOC(scn->sc_osdev, fw_size, GFP_ATOMIC);
+#ifdef FEATURE_SECURE_FIRMWARE
 
-	if (!fw_ptr) {
-		pr_err("Failed to allocate fw_ptr memory\n");
-		status = A_ERROR;
-		goto end;
-	}
-	OS_MEMCPY(fw_ptr, fw_entry->data, fw_size);
+	OS_MEMSET(fw_buf.g_secure_fw_ptr, 0x0, sizeof(fw_buf.g_secure_fw_ptr));
+	OS_MEMCPY(fw_buf.g_secure_fw_ptr, fw_entry->data, fw_entry_size);
+	pr_err("fw_entry_size:%d\n", fw_entry_size);
 
-	if (ol_check_fw_hash(fw_ptr, fw_size, file)) {
+	if (ol_check_fw_hash(fw_buf.g_secure_fw_ptr, fw_entry_size, file)) {
 		pr_err("Hash Check failed for file:%s\n", filename);
 		status = A_ERROR;
-		OS_FREE(fw_ptr);
 		goto end;
 	}
-
-	OS_FREE(fw_ptr);
+#endif
 
 	if (file == ATH_BOARD_DATA_FILE)
 	{
