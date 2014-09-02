@@ -408,7 +408,7 @@ static int __ol_transfer_bin_file(struct ol_softc *scn, ATH_BIN_FILE file,
 	int bin_off, bin_len;
 	SIGN_HEADER_T *sign_header;
 #endif
-	static u8 g_secure_fw_ptr[1048576];     // 1MB
+	u8 *fw_ptr;
 	u32 fw_size;
 
 	int ret;
@@ -546,14 +546,23 @@ static int __ol_transfer_bin_file(struct ol_softc *scn, ATH_BIN_FILE file,
 	tempEeprom = NULL;
 
 	fw_size = fw_entry->size;
-	OS_MEMSET(g_secure_fw_ptr, 0x0, sizeof(g_secure_fw_ptr));
-	OS_MEMCPY(g_secure_fw_ptr, fw_entry->data, fw_size);
+	fw_ptr = OS_MALLOC(scn->sc_osdev, fw_size, GFP_ATOMIC);
 
-	if (ol_check_fw_hash(g_secure_fw_ptr, fw_size, file)) {
-		pr_err("Hash Check failed for file:%s\n", filename);
+	if (!fw_ptr) {
+		pr_err("Failed to allocate fw_ptr memory\n");
 		status = A_ERROR;
 		goto end;
 	}
+	OS_MEMCPY(fw_ptr, fw_entry->data, fw_size);
+
+	if (ol_check_fw_hash(fw_ptr, fw_size, file)) {
+		pr_err("Hash Check failed for file:%s\n", filename);
+		status = A_ERROR;
+		OS_FREE(fw_ptr);
+		goto end;
+	}
+
+	OS_FREE(fw_ptr);
 
 	if (file == ATH_BOARD_DATA_FILE)
 	{
