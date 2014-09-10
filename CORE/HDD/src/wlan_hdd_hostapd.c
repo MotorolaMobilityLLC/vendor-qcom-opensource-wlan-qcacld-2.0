@@ -2172,6 +2172,7 @@ static int iw_softap_set_trafficmonitor(struct net_device *dev,
         struct iw_request_info *info,
         union iwreq_data *wrqu, char *extra)
 {
+#if 0
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
     int *isSetTrafficMon = (int *)wrqu->data.pointer;
     hdd_context_t *pHddCtx;
@@ -2225,6 +2226,7 @@ static int iw_softap_set_trafficmonitor(struct net_device *dev,
         }
 
     }
+#endif
     return 0;
 }
 
