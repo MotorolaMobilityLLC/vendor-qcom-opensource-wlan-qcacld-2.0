@@ -12036,7 +12036,7 @@ void sme_StatsExtRegisterCallback(tHalHandle hHal, StatsExtCallback callback)
 
   \return eHalStatus
 ******************************************************************************/
-eHalStatus sme_StatsExtRequest(tANI_U8 session_id, tpStatsExtRequestReq input)
+eHalStatus sme_StatsExtRequest(tANI_U8 session_id, const tpStatsExtRequestReq input)
 {
     vos_msg_t msg;
     tpStatsExtRequest data;

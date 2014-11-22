@@ -710,7 +710,7 @@ static const struct nl80211_vendor_cmd_info wlan_hdd_cfg80211_vendor_events[] =
 };
 
 int is_driver_dfs_capable(struct wiphy *wiphy, struct wireless_dev *wdev,
-                          void *data, int data_len)
+                          const void *data, int data_len)
 {
     u32 dfs_capability;
     struct sk_buff *temp_skbuff;
@@ -747,7 +747,7 @@ int is_driver_dfs_capable(struct wiphy *wiphy, struct wireless_dev *wdev,
 #ifdef WLAN_FEATURE_STATS_EXT
 static int wlan_hdd_cfg80211_stats_ext_request(struct wiphy *wiphy,
                                         struct wireless_dev *wdev,
-                                        void *data, int data_len)
+                                        const void *data, int data_len)
 {
     tStatsExtRequestReq stats_ext_req;
     struct net_device *dev = wdev->netdev;

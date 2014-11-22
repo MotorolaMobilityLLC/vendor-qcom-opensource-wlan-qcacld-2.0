@@ -3519,7 +3519,7 @@ eHalStatus sme_ApDisableIntraBssFwd(tHalHandle hHal, tANI_U8 sessionId,
 
 typedef struct sStatsExtRequestReq {
   tANI_U32 request_data_len;
-  tANI_U8* request_data;
+  const tANI_U8* request_data;
 } tStatsExtRequestReq, *tpStatsExtRequestReq;
 
 typedef void (* StatsExtCallback)(void *, tStatsExtEvent *);
