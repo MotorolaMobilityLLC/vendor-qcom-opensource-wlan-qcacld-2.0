@@ -664,6 +664,9 @@ int hdd_softap_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
    }
 #endif /* QCA_PKT_PROTO_TRACE */
 
+   pAdapter->stats.tx_bytes += skb->len;
+   ++pAdapter->stats.tx_packets;
+
    if (WLANTL_SendSTA_DataFrame((WLAN_HDD_GET_CTX(pAdapter))->pvosContext,
                                  STAId, skb
 #ifdef QCA_PKT_PROTO_TRACE

@@ -1078,6 +1078,9 @@ int hdd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
    }
 #endif /* QCA_PKT_PROTO_TRACE */
 
+   pAdapter->stats.tx_bytes += skb->len;
+   ++pAdapter->stats.tx_packets;
+
    /*
     * TODO: Should we stop net queues when txrx returns non-NULL?.
     */
