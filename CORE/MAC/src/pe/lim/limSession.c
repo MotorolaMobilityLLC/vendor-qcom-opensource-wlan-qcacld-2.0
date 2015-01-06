@@ -153,6 +153,17 @@ void pe_reset_protection_callback(void *ptr)
                               &beacon_params, pe_session_entry);
     }
 
+    /* index 0, is self node, peers start from 1 */
+    for(i = 1 ; i < mac_ctx->lim.gLimAssocStaLimit ; i++)
+    {
+        station_hash_node = dphGetHashEntry(mac_ctx, i,
+                              &pe_session_entry->dph.dphHashTable);
+        if (NULL == station_hash_node)
+            continue;
+        limDecideApProtection(mac_ctx, station_hash_node->staAddr,
+                              &beacon_params, pe_session_entry);
+    }
+
     if ((current_protection_state != pe_session_entry->old_protection_state) &&
         (VOS_FALSE == mac_ctx->sap.SapDfsInfo.is_dfs_cac_timer_running)) {
         VOS_TRACE(VOS_MODULE_ID_PE,
