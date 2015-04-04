@@ -130,8 +130,7 @@ void limFTCleanup(tpAniSirGlobal pMac)
         pMac->ft.ftPEContext.pAddStaReq = NULL;
     }
 
-    pMac->ft.ftPEContext.ftPreAuthStatus = eSIR_SUCCESS;
-
+    vos_mem_zero(&pMac->ft.ftPEContext, sizeof(tftPEContext));
 }
 
 /*--------------------------------------------------------------------------
@@ -304,13 +303,11 @@ int limProcessFTPreAuthReq(tpAniSirGlobal pMac, tpSirMsgQ pMsg)
         limPrintMacAddr( pMac, pMac->ft.ftPEContext.pFTPreAuthReq->currbssId, LOGE );
         // Post the FT Pre Auth Response to SME
         limPostFTPreAuthRsp(pMac, eSIR_FAILURE, NULL, 0, NULL);
-        if (pMac->ft.ftPEContext.pFTPreAuthReq->pbssDescription)
-        {
-            vos_mem_free(pMac->ft.ftPEContext.pFTPreAuthReq->pbssDescription);
-            pMac->ft.ftPEContext.pFTPreAuthReq->pbssDescription = NULL;
-        }
-        pMac->ft.ftPEContext.pFTPreAuthReq = NULL;
-        return TRUE;
+
+        /* return FALSE, since the Pre-Auth Req will be freed in
+         * limPostFTPreAuthRsp on failure
+         */
+        return bufConsumed;
     }
 #ifdef FEATURE_WLAN_DIAG_SUPPORT_LIM //FEATURE_WLAN_DIAG_SUPPORT
         limDiagEventReport(pMac, WLAN_PE_DIAG_PRE_AUTH_REQ_EVENT, psessionEntry, 0, 0);
@@ -1140,6 +1137,13 @@ void limPostFTPreAuthRsp(tpAniSirGlobal pMac, tSirRetStatus status,
     }
 #endif
 
+    if (status != eSIR_SUCCESS) {
+        /* Ensure that on Pre-Auth failure the cached Pre-Auth Req and
+         * other allocated memory is freed up before returning.
+         */
+        limLog(pMac, LOG1, "Pre-Auth Failed, Cleanup!");
+        limFTCleanup(pMac);
+    }
     mmhMsg.type = pFTPreAuthRsp->messageType;
     mmhMsg.bodyptr = pFTPreAuthRsp;
     mmhMsg.bodyval = 0;
@@ -1412,6 +1416,12 @@ void limProcessFTPreauthRspTimeout(tpAniSirGlobal pMac)
         return;
     }
 
+    if (pMac->ft.ftPEContext.pFTPreAuthReq == NULL) {
+        limLog(pMac, LOGE, FL("Auth Rsp might already be posted to SME and "
+               "ftcleanup done! sessionId:%d"),
+               pMac->lim.limTimers.gLimFTPreAuthRspTimer.sessionId);
+        return;
+    }
     /* To handle the race condition where we recieve preauth rsp after
      * timer has expired.
      */
