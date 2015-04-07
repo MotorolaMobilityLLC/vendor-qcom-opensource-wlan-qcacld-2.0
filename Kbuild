@@ -1179,6 +1179,8 @@ ifeq ($(CONFIG_ATH_PCIE_ACCESS_DEBUG), 1)
 CDEFINES += -DCONFIG_ATH_PCIE_ACCESS_DEBUG
 endif
 
+CDEFINES += -DCONFIG_FW_LOGS_BASED_ON_INI
+
 # Fix build for GCC 4.7
 EXTRA_CFLAGS += -Wno-maybe-uninitialized -Wno-unused-function
 
