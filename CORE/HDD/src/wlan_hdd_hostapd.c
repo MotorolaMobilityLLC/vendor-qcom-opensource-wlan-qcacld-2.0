@@ -1969,7 +1969,7 @@ static iw_softap_setparam(struct net_device *dev,
 
 
     //BEGIN MOT a19110 IKDREL3KK-11113 Fix iwpriv panic
-    if(tmp[0] < 0 || tmp[0] > QCASAP_SET_TM_LEVEL)
+    if(tmp[0] < 0 || tmp[0] > QCASAP_SET_PHYMODE)
     {
         value = (int *)(wrqu->data.pointer);
     }
