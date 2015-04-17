@@ -6742,7 +6742,7 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
             hdd_tx_rx_stats_t *pStats = &pAdapter->hdd_stats.hddTxRxStats;
             hdd_chip_reset_stats_t *pResetStats = &pHddCtx->hddChipResetStats;
 
-            printk(KERN_ERR //IKLOCSEN-2174:Enable extra driver logs dynamically
+            snprintf(extra, WE_MAX_STR_LEN,
                      "\nTransmit"
                      "\ncalled %u, dropped %u, backpressured %u, queued %u"
                      "\n      dropped BK %u, BE %u, VI %u, VO %u"
