@@ -45,7 +45,7 @@
 #include <ol_rx_reorder_timeout.h> /* OL_RX_REORDER_TIMEOUT_REMOVE, etc. */
 #include <ol_rx_reorder.h>
 #include <ol_rx_defrag.h>
-
+extern int dumpEnable;
 
 /*=== data types and defines ===*/
 #define OL_RX_REORDER_ROUND_PWR2(value) g_log2ceil[value]
@@ -144,6 +144,38 @@ ol_rx_reorder_seq_num_check(
 }
 
 void
+ol_rx_reorder_display(
+    struct ol_txrx_pdev_t *pdev,
+    struct ol_txrx_peer_t *peer,
+    unsigned tid)
+{
+    adf_nbuf_t head_msdu;
+    int idx = 0, msdu_cnt=0;
+    struct ol_rx_reorder_array_elem_t *rx_reorder_array_elem = NULL;
+
+    printk("%s %d, display reorder buffer info for peer-id %d, tid %d\n",
+        __func__, __LINE__, peer->peer_ids[0], tid);
+
+    for(; idx<64; idx++)
+    {
+        msdu_cnt = 0;
+        rx_reorder_array_elem = &peer->tids_rx_reorder[tid].array[idx];
+        head_msdu = rx_reorder_array_elem->head;
+        /*while (head_msdu != NULL) {
+        msdu_cnt++;
+        head_msdu = adf_nbuf_next(head_msdu);
+        }
+        */
+        if(head_msdu != NULL) msdu_cnt++;
+
+        if (msdu_cnt !=0)
+            printk("idx %d, MSDU_cnt %d\n", idx, msdu_cnt);
+    }
+    printk("display reorder buffer end for peer-id %d, tid %d\n",peer->peer_ids[0], tid);
+
+}
+
+void
 ol_rx_reorder_store(
     struct ol_txrx_pdev_t *pdev,
     struct ol_txrx_peer_t *peer,
@@ -194,7 +226,9 @@ ol_rx_reorder_release(
     OL_RX_REORDER_PTR_CHECK(head_msdu) {
         OL_RX_REORDER_MPDU_CNT_DECR(&peer->tids_rx_reorder[tid], 1);
     }
-
+    if(dumpEnable == 1)
+        VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_INFO,
+            "%s %d: start_idx %d end_idx %d", __func__, __LINE__, idx_start, idx_end);
     idx = (idx_start + 1);
     OL_RX_REORDER_IDX_WRAP(idx, win_sz, win_sz_mask);
     while (idx != idx_end) {
@@ -280,7 +314,9 @@ ol_rx_reorder_flush(
 
     idx_start &= win_sz_mask;
     idx_end   &= win_sz_mask;
-
+    if(dumpEnable == 1)
+        VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_INFO,
+            "%s %d: start_idx %d end_idx %d", __func__, __LINE__, idx_start, idx_end);
     do {
         rx_reorder_array_elem =
             &peer->tids_rx_reorder[tid].array[idx_start];
@@ -551,6 +587,9 @@ ol_rx_pn_ind_handler(
     seq_num_start &= win_sz_mask;
     seq_num_end   &= win_sz_mask;
     seq_num = seq_num_start;
+    if(dumpEnable == 1)
+        printk("%s %d seq_start %d, seq_end %d, seq_num %d pn_ie_cnt %d",
+                __func__, __LINE__,seq_num_start,seq_num_end,seq_num, pn_ie_cnt);
 
     do {
         rx_reorder_array_elem =

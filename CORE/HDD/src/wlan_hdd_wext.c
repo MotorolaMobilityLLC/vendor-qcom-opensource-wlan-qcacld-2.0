@@ -118,7 +118,7 @@
 #define HDD_FINISH_ULA_TIME_OUT         800
 #define HDD_SET_MCBC_FILTERS_TO_FW      1
 #define HDD_DELETE_MCBC_FILTERS_FROM_FW 0
-
+extern int dumpEnable;
 extern int wlan_hdd_cfg80211_update_band(struct wiphy *wiphy, eCsrBand eBand);
 static int ioctl_debug;
 module_param(ioctl_debug, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -5587,6 +5587,11 @@ static int iw_setint_getnone(struct net_device *dev, struct iw_request_info *inf
 	case WE_SET_TXRX_FWSTATS:
 	{
            hddLog(LOG1, "WE_SET_TXRX_FWSTATS val %d", set_value);
+           if (set_value == 9)
+               dumpEnable =1;
+           else if (set_value == 10)
+               dumpEnable = 0;
+           else
            ret = process_wma_set_command((int)pAdapter->sessionId,
 			   (int)WMA_VDEV_TXRX_FWSTATS_ENABLE_CMDID,
 			   set_value, VDEV_CMD);

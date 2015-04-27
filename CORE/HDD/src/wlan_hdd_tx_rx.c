@@ -84,6 +84,7 @@ const v_U8_t hdd_QdiscAcToTlAC[] = {
 };
 
 static struct sk_buff* hdd_mon_tx_fetch_pkt(hdd_adapter_t* pAdapter);
+extern int dumpEnable;
 
 /*---------------------------------------------------------------------------
   Type declarations
@@ -1791,6 +1792,21 @@ VOS_STATUS hdd_rx_packet_cbk(v_VOID_t *vosContext,
          ++pAdapter->hdd_stats.hddTxRxStats.rxRefused;
 
       skb = skb_next;
+   if (dumpEnable == 1) {
+           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
+                   "%s: RX-data dump\n", __func__);
+           VOS_TRACE_HEX_DUMP(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                   skb->data, 64);
+   }
+
+   rxstat = netif_rx_ni(skb);
+   if (NET_RX_SUCCESS == rxstat)
+   {
+       ++pAdapter->hdd_stats.hddTxRxStats.rxDelivered;
+   }
+   else
+   {
+       ++pAdapter->hdd_stats.hddTxRxStats.rxRefused;
    }
 
    pAdapter->dev->last_rx = jiffies;

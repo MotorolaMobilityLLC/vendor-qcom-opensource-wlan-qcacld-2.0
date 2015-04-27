@@ -63,7 +63,7 @@
 extern int process_wma_set_command(int sessid, int paramid,
                                    int sval, int vpdev);
 #endif
-
+int dumpEnable;
 /* AR9888v1 WORKAROUND for EV#112367 */
 /* FIX THIS - remove this WAR when the bug is fixed */
 #define PEREGRINE_1_0_ZERO_LEN_PHY_ERR_WAR
@@ -937,6 +937,37 @@ htt_rx_amsdu_pop_ll(
          * than the descriptor.
          */
         adf_nbuf_pull_head(msdu, HTT_RX_STD_DESC_RESERVATION);
+    if ((dumpEnable == 1) && (msdu->data_len >= 16)){
+        adf_os_print( "\n%s: skbuff->data dump**************\n", __func__);
+        {
+        char *buf = (char *)msdu->data;
+        int i;
+
+        for (i=0; (i+15)< 64; i+=16)
+            {
+            adf_os_print(
+                    "%02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x\n",
+                    buf[i],
+                    buf[i+1],
+                    buf[i+2],
+                    buf[i+3],
+                    buf[i+4],
+                    buf[i+5],
+                    buf[i+6],
+                    buf[i+7],
+                    buf[i+8],
+                    buf[i+9],
+                    buf[i+10],
+                    buf[i+11],
+                    buf[i+12],
+                    buf[i+13],
+                    buf[i+14],
+                    buf[i+15]);
+            }
+        }
+        adf_os_print( "data dump end**************\n");
+    }
+
 
         /*
          * Sanity check - confirm the HW is finished filling in the rx data.
