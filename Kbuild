@@ -223,7 +223,7 @@ CONFIG_QCA_SINGLE_BINARY_SUPPORT := 0
 CONFIG_TARGET_RAMDUMP_AFTER_KERNEL_PANIC := 1
 
 #Flag to enable/disable secure firmware feature
-CONFIG_FEATURE_SECURE_FIRMWARE := 0
+CONFIG_FEATURE_SECURE_FIRMWARE := 1
 
 #Flag to enable Stats Ext implementation
 CONFIG_FEATURE_STATS_EXT := 1
@@ -237,6 +237,12 @@ HAVE_CFG80211 := 1
 else
 HAVE_CFG80211 := 0
 endif
+endif
+
+ifeq ($(BOARD_PLATFORM),msm8994)
+CONFIG_MSM8994 := 1
+else
+CONFIG_MSM8994 := 0
 endif
 
 ############ COMMON ############
@@ -1262,6 +1268,10 @@ endif
 #Enable/disable secure firmware feature
 ifeq ($(CONFIG_FEATURE_SECURE_FIRMWARE), 1)
 CDEFINES += -DFEATURE_SECURE_FIRMWARE
+endif
+
+ifeq ($(CONFIG_MSM8994), 1)
+CDEFINES += -DCONFIG_MSM8994
 endif
 
 ifeq ($(CONFIG_ATH_PCIE_ACCESS_DEBUG), 1)
