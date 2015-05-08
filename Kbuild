@@ -337,6 +337,12 @@ HAVE_CFG80211 := 0
 endif
 endif
 
+ifeq ($(BOARD_PLATFORM),msm8994)
+CONFIG_MSM8994 := 1
+else
+CONFIG_MSM8994 := 0
+endif
+
 ############ COMMON ############
 COMMON_DIR :=	CORE/SERVICES/COMMON
 COMMON_INC :=	-I$(WLAN_ROOT)/$(COMMON_DIR)
@@ -1474,6 +1480,10 @@ endif
 #Enable/disable FW hash check for secure firmware feature
 ifeq ($(CONFIG_CLD_DEBUG), y)
 CDEFINES += -DFEATURE_FW_HASH_CHECK
+endif
+
+ifeq ($(CONFIG_MSM8994), 1)
+CDEFINES += -DCONFIG_MSM8994
 endif
 
 ifeq ($(CONFIG_ATH_PCIE_ACCESS_DEBUG), 1)
