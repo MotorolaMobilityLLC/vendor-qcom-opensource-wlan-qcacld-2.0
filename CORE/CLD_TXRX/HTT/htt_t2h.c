@@ -183,7 +183,8 @@ htt_t2h_lp_msg_handler(void *context, adf_nbuf_t htt_t2h_msg )
                 HTT_RX_FLUSH_MPDU_STATUS_GET(*(msg_word+1)) == 1 ?
                 htt_rx_flush_release : htt_rx_flush_discard;
             if(dumpEnable == 1)
-                adf_os_print("RX_FLUSH: peer_id %x, tid %x, seq_num_start %x, seq_num_end %x, action %d\n",
+                VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
+                        "RX_FLUSH: peer_id %x, tid %x, seq_num_start %x,seq_num_end %x, action %d\n",
                     peer_id, tid, seq_num_start, seq_num_end, action);
 
             ol_rx_flush_handler(
@@ -237,7 +238,8 @@ htt_t2h_lp_msg_handler(void *context, adf_nbuf_t htt_t2h_msg )
             tid = HTT_RX_ADDBA_TID_GET(*msg_word);
             win_sz = HTT_RX_ADDBA_WIN_SIZE_GET(*msg_word);
             if(dumpEnable == 1)
-                adf_os_print("RX_ADDBA: peer_id %x, tid %x, win_sz %d\n",
+                VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
+                        "RX_ADDBA: peer_id %x, tid %x, win_sz %d\n",
                     peer_id, tid, win_sz);
 
             ol_rx_addba_handler(
@@ -253,7 +255,8 @@ htt_t2h_lp_msg_handler(void *context, adf_nbuf_t htt_t2h_msg )
             peer_id = HTT_RX_DELBA_PEER_ID_GET(*msg_word);
             tid = HTT_RX_DELBA_TID_GET(*msg_word);
             if(dumpEnable == 1)
-                adf_os_print("RX_DelBA: peer_id %x, tid %x\n",
+                VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
+                        "RX_DelBA: peer_id %x, tid %x\n",
                     peer_id, tid);
             ol_rx_delba_handler(pdev->txrx_pdev, peer_id, tid);
             break;
@@ -430,8 +433,9 @@ if (adf_os_unlikely(pdev->rx_ring.rx_reset)) {
 
     msg_word = (u_int32_t *) adf_nbuf_data(htt_t2h_msg);
     msg_type = HTT_T2H_MSG_TYPE_GET(*msg_word);
-    if(dumpEnable == 1)
-        adf_os_print("%s: HTT_msg_type: %d, word1: 0x%02x, word2: 0x%02x \n", __func__, msg_type, *msg_word, *(msg_word+1));
+    if ((dumpEnable == 1) && (msg_type != 8))
+       VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
+               "%s: HTT_msg_type: %d, word1: 0x%02x, word2: 0x%02x \n", __func__, msg_type, *msg_word, *(msg_word+1));
 
     switch (msg_type) {
     case HTT_T2H_MSG_TYPE_RX_IND:
@@ -531,7 +535,8 @@ if (adf_os_unlikely(pdev->rx_ring.rx_reset)) {
             seq_num_end = HTT_RX_PN_IND_SEQ_NUM_END_GET(*msg_word);
             pn_ie_cnt = HTT_RX_PN_IND_PN_IE_CNT_GET(*msg_word);
             if(dumpEnable == 1)
-                adf_os_print("RX_PN_IND: peer_id %x, tid %x, seq_start %x, seq_end %x, pn_ie_cnt %d\n",
+                VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
+                        "RX_PN_IND: peer_id %x, tid %x, seq_start %x,seq_end %x, pn_ie_cnt %d\n",
                     peer_id, tid, seq_num_start, seq_num_end, pn_ie_cnt);
 
             msg_word++;

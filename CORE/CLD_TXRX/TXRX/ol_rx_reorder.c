@@ -153,8 +153,9 @@ ol_rx_reorder_display(
     int idx = 0, msdu_cnt=0;
     struct ol_rx_reorder_array_elem_t *rx_reorder_array_elem = NULL;
 
-    printk("%s %d, display reorder buffer info for peer-id %d, tid %d\n",
-        __func__, __LINE__, peer->peer_ids[0], tid);
+    VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
+            "%s %d, display reorder buffer info for peer-id %d,tid %d\n",
+       __func__, __LINE__, peer->peer_ids[0], tid);
 
     for(; idx<64; idx++)
     {
@@ -171,7 +172,8 @@ ol_rx_reorder_display(
         if (msdu_cnt !=0)
             printk("idx %d, MSDU_cnt %d\n", idx, msdu_cnt);
     }
-    printk("display reorder buffer end for peer-id %d, tid %d\n",peer->peer_ids[0], tid);
+    VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
+            "display reorder buffer end for peer-id %d, tid %d\n",peer->peer_ids[0], tid);
 
 }
 
@@ -227,7 +229,7 @@ ol_rx_reorder_release(
         OL_RX_REORDER_MPDU_CNT_DECR(&peer->tids_rx_reorder[tid], 1);
     }
     if(dumpEnable == 1)
-        VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_INFO,
+        VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
             "%s %d: start_idx %d end_idx %d", __func__, __LINE__, idx_start, idx_end);
     idx = (idx_start + 1);
     OL_RX_REORDER_IDX_WRAP(idx, win_sz, win_sz_mask);
@@ -315,7 +317,7 @@ ol_rx_reorder_flush(
     idx_start &= win_sz_mask;
     idx_end   &= win_sz_mask;
     if(dumpEnable == 1)
-        VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_INFO,
+        VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
             "%s %d: start_idx %d end_idx %d", __func__, __LINE__, idx_start, idx_end);
     do {
         rx_reorder_array_elem =
@@ -588,8 +590,9 @@ ol_rx_pn_ind_handler(
     seq_num_end   &= win_sz_mask;
     seq_num = seq_num_start;
     if(dumpEnable == 1)
-        printk("%s %d seq_start %d, seq_end %d, seq_num %d pn_ie_cnt %d",
-                __func__, __LINE__,seq_num_start,seq_num_end,seq_num, pn_ie_cnt);
+        VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
+                "%s %d seq_start %d, seq_end %d, seq_num %d, pn_ie_cnt %d", __func__,
+                __LINE__,seq_num_start,seq_num_end,seq_num, pn_ie_cnt);
 
     do {
         rx_reorder_array_elem =
