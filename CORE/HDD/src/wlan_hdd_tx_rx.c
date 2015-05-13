@@ -1723,90 +1723,81 @@ VOS_STATUS hdd_rx_packet_cbk(v_VOID_t *vosContext,
    skb = (struct sk_buff *) rxBuf;
    pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
    while (NULL != skb) {
-      skb_next = skb->next;
+       skb_next = skb->next;
 
-      if ((pHddStaCtx->conn_info.proxyARPService) &&
-         cfg80211_is_gratuitous_arp_unsolicited_na(skb)) {
-            ++pAdapter->hdd_stats.hddTxRxStats.rxDropped;
-            VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
-               "%s: Dropping HS 2.0 Gratuitous ARP or Unsolicited NA", __func__);
-            kfree_skb(skb);
-
-            skb = skb_next;
-            continue;
-      }
+       if ((pHddStaCtx->conn_info.proxyARPService) &&
+          cfg80211_is_gratuitous_arp_unsolicited_na(skb)) {
+             ++pAdapter->hdd_stats.hddTxRxStats.rxDropped;
+             VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_INFO,
+                "%s: Dropping HS 2.0 Gratuitous ARP or Unsolicited NA", __func__);
+             kfree_skb(skb);
+             skb = skb_next;
+             continue;
+       }
 
 #ifdef QCA_PKT_PROTO_TRACE
       if ((pHddCtx->cfg_ini->gEnableDebugLog & VOS_PKT_TRAC_TYPE_EAPOL) ||
           (pHddCtx->cfg_ini->gEnableDebugLog & VOS_PKT_TRAC_TYPE_DHCP)) {
          proto_type = vos_pkt_get_proto_type(skb,
                         pHddCtx->cfg_ini->gEnableDebugLog, 0);
-         if (VOS_PKT_TRAC_TYPE_EAPOL & proto_type)
-            vos_pkt_trace_buf_update("ST:R:EPL");
-         else if (VOS_PKT_TRAC_TYPE_DHCP & proto_type)
-            vos_pkt_trace_buf_update("ST:R:DHC");
-      }
+      if (VOS_PKT_TRAC_TYPE_EAPOL & proto_type)
+          vos_pkt_trace_buf_update("ST:R:EPL");
+      else if (VOS_PKT_TRAC_TYPE_DHCP & proto_type)
+          vos_pkt_trace_buf_update("ST:R:DHC");
+   }
+
 #endif /* QCA_PKT_PROTO_TRACE */
 
       skb->dev = pAdapter->dev;
       skb->protocol = eth_type_trans(skb, skb->dev);
 
-      /* Check & drop mcast packets (for IPV6) as required */
-      if (drop_ip6_mcast(skb)) {
+   /* Check & drop mcast packets (for IPV6) as required */
+   if (drop_ip6_mcast(skb)) {
          print_hex_dump_bytes("MAC Header",
-            DUMP_PREFIX_NONE, skb_mac_header(skb), 16);
+         DUMP_PREFIX_NONE, skb_mac_header(skb), 16);
          ++pAdapter->hdd_stats.hddTxRxStats.rxDropped;
          VOS_TRACE(VOS_MODULE_ID_HDD_DATA, VOS_TRACE_LEVEL_ERROR,
-               "%s: Dropping multicast to self NA", __func__);
-         kfree_skb(skb);
-
-         skb = skb_next;
-         continue;
-      }
-
-      ++pAdapter->hdd_stats.hddTxRxStats.rxPackets;
-      ++pAdapter->stats.rx_packets;
-      pAdapter->stats.rx_bytes += skb->len;
-
-      /*
-       * If this is not a last packet on the chain
-       * Just put packet into backlog queue, not scheduling RX sirq
-       */
-      if (skb->next) {
-         rxstat = netif_rx(skb);
-      } else {
+            "%s: Dropping multicast to self NA", __func__);
+          kfree_skb(skb);
+ 
+          skb = skb_next;
+          continue;
+       }
+ 
+       ++pAdapter->hdd_stats.hddTxRxStats.rxPackets;
+       ++pAdapter->stats.rx_packets;
+       pAdapter->stats.rx_bytes += skb->len;
+ 
+       /*
+        * If this is not a last packet on the chain
+        * Just put packet into backlog queue, not scheduling RX sirq
+        */
+       if (skb->next) {
+          rxstat = netif_rx(skb);
+       } else {
 #ifdef WLAN_FEATURE_HOLD_RX_WAKELOCK
-         vos_wake_lock_timeout_acquire(&pHddCtx->rx_wake_lock,
-                                       HDD_WAKE_LOCK_DURATION);
+           vos_wake_lock_timeout_acquire(&pHddCtx->rx_wake_lock,
+                   HDD_WAKE_LOCK_DURATION);
 #endif
-         /*
-          * This is the last packet on the chain
-          * Scheduling rx sirq
-          */
-         rxstat = netif_rx_ni(skb);
-      }
-
-      if (NET_RX_SUCCESS == rxstat)
-         ++pAdapter->hdd_stats.hddTxRxStats.rxDelivered;
-      else
-         ++pAdapter->hdd_stats.hddTxRxStats.rxRefused;
-
-      skb = skb_next;
-   if (dumpEnable == 1) {
-           VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
-                   "%s: RX-data dump\n", __func__);
-           VOS_TRACE_HEX_DUMP(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
-                   skb->data, 64);
-   }
-
-   rxstat = netif_rx_ni(skb);
-   if (NET_RX_SUCCESS == rxstat)
-   {
-       ++pAdapter->hdd_stats.hddTxRxStats.rxDelivered;
-   }
-   else
-   {
-       ++pAdapter->hdd_stats.hddTxRxStats.rxRefused;
+                  if (dumpEnable == 1) {
+                          VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR, 
+                              "%s: RX-data dump\n", __func__);
+                          VOS_TRACE_HEX_DUMP(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                              skb->data, 64);
+                  }
+          /*
+           * This is the last packet on the chain
+           * Scheduling rx sirq
+           */
+          rxstat = netif_rx_ni(skb);
+       }
+ 
+       if (NET_RX_SUCCESS == rxstat)
+          ++pAdapter->hdd_stats.hddTxRxStats.rxDelivered;
+       else
+          ++pAdapter->hdd_stats.hddTxRxStats.rxRefused;
+ 
+       skb = skb_next;
    }
 
    pAdapter->dev->last_rx = jiffies;
