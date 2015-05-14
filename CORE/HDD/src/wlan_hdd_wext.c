@@ -6730,8 +6730,12 @@ int iw_set_three_ints_getnone(struct net_device *dev,
                               union iwreq_data *wrqu, char *extra)
 {
     hdd_adapter_t *pAdapter = WLAN_HDD_GET_PRIV_PTR(dev);
-    int *value = (int *)extra;
-    int sub_cmd = value[0];
+    //BEGIN MOT a19110 IKSWL-15774 Ioctl from Mot code
+    int *value;
+    int sub_cmd, cmd_len;
+    int *tmp_value;
+    int *get_value = NULL;
+    //END IKSWL-15774
     int ret = 0;
 
     if ((WLAN_HDD_GET_CTX(pAdapter))->isLogpInProgress) {
@@ -6739,6 +6743,31 @@ int iw_set_three_ints_getnone(struct net_device *dev,
                                   "%s:LOGP in Progress. Ignore!!!", __func__);
         return -EBUSY;
     }
+
+    //BEGIN MOT a19110 IKSWL-15774 Ioctl from Mot code
+    tmp_value = (int *)extra;
+
+    // Copy from wrqu structure if it was a ioctl from Motorola code
+    if(tmp_value[0] < 0 || (tmp_value[0] >= MAX_SUB_CMD)) {
+        cmd_len = wrqu->data.length;
+        get_value = (int *) kmalloc(cmd_len+1, GFP_KERNEL);  // Motorola, IKHSS7-39028
+
+        if(get_value == NULL)
+            return -ENOMEM;
+
+        if(copy_from_user((char *) get_value, (char*)(wrqu->data.pointer), cmd_len)) {
+            hddLog(VOS_TRACE_LEVEL_FATAL, "%s -- copy_from_user --data pointer failed! bailing",
+                   __FUNCTION__);
+            kfree(get_value);
+            return -EFAULT;
+        }
+
+        value = (int *)get_value;
+    } else {
+        value = (int *)extra;
+    }
+        sub_cmd = value[0];
+    //END IKSWL-15774
 
     switch(sub_cmd) {
 
@@ -6755,6 +6784,12 @@ int iw_set_three_ints_getnone(struct net_device *dev,
        break;
 
     }
+
+    //BEGIN MOT a19110 IKSWL-15774 Ioctl from Mot code
+    if(get_value != NULL)
+        kfree(get_value);
+    //END IKSWL-15774
+
     return ret;
 }
 
