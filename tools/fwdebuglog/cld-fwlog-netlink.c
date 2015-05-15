@@ -121,6 +121,7 @@ void handleLogFileMaxSizeLimit ();
 void compressFile(const char* fromFileName);
 void processFileClose();
 //END IKSWL-8571
+int changeOwnerMod(const char * fileName);
 
 static void usage(void)
 {
@@ -514,7 +515,8 @@ int32_t main(int32_t argc, char *argv[])
            ALOGE(" Could not create parent dir errno=%d\n",errno);
         }
         res = 0;
-         // process the file that was  not zipped at last poweroff
+        changeOwnerMod(logFilePath);
+        // process the file that was  not zipped at last poweroff
         processFileClose();
         createLogFileName(dbglogoutfile,PATH_MAX);
         optionflag |= LOGFILE_FLAG;
@@ -564,8 +566,18 @@ int32_t main(int32_t argc, char *argv[])
         printf("Storing last %d records\n", max_records);
 
         log_out = fopen(dbglogoutfile, "w");
+
         if (log_out == NULL) {
             ALOGE("Failed to create output file %s error=%s ",dbglogoutfile, strerror(errno));
+            close(sock_fd);
+            free(nlh);
+            return -1;
+        }
+        fclose(log_out);
+        changeOwnerMod(dbglogoutfile);
+        log_out = fopen(dbglogoutfile, "w");
+        if (log_out == NULL) {
+            ALOGE("Failed to open output file %s error=%s ",dbglogoutfile, strerror(errno));
             close(sock_fd);
             free(nlh);
             return -1;
@@ -656,9 +668,17 @@ void handleLogFileMaxSizeLimit () {
             ALOGE("Failed to create output file");
             close(sock_fd);
             free(nlh);
-            return -1;
+            return;
     }
-
+    fclose(log_out);
+    changeOwnerMod(dbglogoutfile);
+    log_out = fopen(dbglogoutfile, "w");
+    if (log_out == NULL) {
+            ALOGE("Failed to open output file %s error=%s ",dbglogoutfile, strerror(errno));
+            close(sock_fd);
+            free(nlh);
+            return;
+    }
     return;
 }
 
@@ -719,8 +739,10 @@ void compressFile(const char* fromFileName) {
 cleanup:
     if (fromFile)
         fclose(fromFile);
-    if (toFile)
+    if (toFile) {
         gzclose(toFile);
+        changeOwnerMod(toFilePath);
+    }
 
     // Delete uncompressed file only if compress is success.
     if (isSuccess)
@@ -728,6 +750,7 @@ cleanup:
 
     return;
 }
+
 void processFileClose() {
     struct dirent **eps;
     char  filePath[PATH_MAX] = {0};
@@ -805,3 +828,17 @@ void processFileClose() {
     }
 }
 //End IKSWL-8571
+
+int changeOwnerMod(const char * filePath) {
+    int status = 0;
+    if (chown(filePath, AID_SYSTEM, AID_WIFI)){
+        ALOGE("Failed to change ownership  of gz %s error=%s ",filePath, strerror(errno));
+        status = -1;
+    }
+    if (chmod(filePath, S_IRWXU | S_IRWXG)) {
+        ALOGE("Failed to change mode  of gz %s error=%s ",filePath, strerror(errno));
+        if (!status)
+            status = -1;
+    }
+    return status;
+}
