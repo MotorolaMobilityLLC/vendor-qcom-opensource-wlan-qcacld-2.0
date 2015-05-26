@@ -1299,6 +1299,10 @@ ifeq ($(CONFIG_LINUX_QCMBR),y)
 CDEFINES += -DLINUX_QCMBR
 endif
 
+ifneq ($(CNSS_LOCALE),)
+CDEFINES += -DCNSS_LOCALE_$(CNSS_LOCALE)
+endif
+
 KBUILD_CPPFLAGS += $(CDEFINES)
 
 # Currently, for versions of gcc which support it, the kernel Makefile
