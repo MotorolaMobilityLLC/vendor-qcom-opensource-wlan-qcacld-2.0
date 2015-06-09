@@ -754,6 +754,7 @@ cleanup:
 void processFileClose() {
     struct dirent **eps;
     char  filePath[PATH_MAX] = {0};
+    int fileCount =0;
     if (dbglogoutfile[0] != 0) {
         compressFile(dbglogoutfile);
     } else {
@@ -777,13 +778,16 @@ void processFileClose() {
         }
     }
     //check and remove last modified log file
-    if (scandir(logFilePath, &eps, 0, alphasort) >= (MAX_FILES+2)) {
+    if ( (fileCount = scandir(logFilePath, &eps, 0, alphasort)) < 0) {
+        ALOGE("Scandir failed for %s  errorno=%d\n",logFilePath,errno);
+    } else {
         DIR *dp;
         struct dirent *ep;
         struct stat structstat;
         char oldfile[30];
         unsigned long modified=0;
         static char cwd[1024]={};
+        int i = 0;
 
         // remember and change dir for stat and unlink
         if (getcwd(cwd, sizeof(cwd)) == NULL) {
@@ -793,38 +797,52 @@ void processFileClose() {
             ALOGE(" chdir failed errorno=%d\n",errno);
         }
 
-        dp = opendir(logFilePath);
-        if (dp != NULL) {
-            //traverse through and find the oldest file in dir:w
-            while ((ep = readdir(dp)) != NULL){
-               if (ep->d_name[0] == '.'){
-                   //donot consider . and .. files
-                   continue;
-               }
-
-              if (stat(ep->d_name, &structstat) <0) {
-                  ALOGE(" stat failed errorno=%d\n",errno);
-              }
-              if ( (modified > structstat.st_mtime) || modified==0) {
-                  // copy file based on mofified file name
-                  modified = structstat.st_mtime;
-                  memset(oldfile,0,sizeof(oldfile));
-                  snprintf(oldfile,sizeof(oldfile), "%s", ep->d_name);
-             }
-           }
-           //remove the oldest file
-           if (unlink(oldfile)) {
-               ALOGE(" unlink filed errno = %d\n",errno);
-           }
+        for (i=0; i++; i<fileCount) {
+           free( eps[i]);
         }
+        free(eps);
 
+        //check and remove last modified log file
+        while (fileCount >= (MAX_FILES+4)) {
+            int j=0;
+            dp = opendir(logFilePath);
+            if (dp != NULL) {
+               modified =0;
+                //traverse through and find the oldest file in dir:w
+                while ((ep = readdir(dp)) != NULL){
+                    if (ep->d_name[0] == '.'){
+                     //donot consider . and .. files
+                    continue;
+                    }
+                    if (stat(ep->d_name, &structstat) <0) {
+                    }
+                    if ( ! S_ISREG(structstat.st_mode)) {
+                        continue;
+                    }
+                    if ( (modified > structstat.st_mtime) || modified==0) {
+                        // copy file based on mofified file name
+                        modified = structstat.st_mtime;
+                        memset(oldfile,0,sizeof(oldfile));
+                        snprintf(oldfile,sizeof(oldfile), "%s", ep->d_name);
+                    }
+                }
+                if (closedir(dp))
+                  ALOGE("Close dir failed errorno= %d\n",errno);
+                //remove the oldest file
+                if (unlink(oldfile)) {
+                    ALOGE(" unlink failed for %s errno = %d\n",oldfile , errno);
+                } else {
+                    fileCount--;
+                }
+            } else  {
+                ALOGE("Unable to open logs dir...");
+            }
+        }
         //restore pwd
         if ((cwd == NULL) || chdir(cwd)) {
             ALOGE(" chdir restore failed errorno=%d\n",errno);
         }
 
-    }else {
-        ALOGE("Unable to open logs dir...");
     }
 }
 //End IKSWL-8571
