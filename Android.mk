@@ -47,6 +47,7 @@ $(shell rm -f $(TARGET_OUT_ETC)/firmware/wlan/qca_cld/WCNSS_qcom_cfg.ini)
 $(shell cp $(LOCAL_PATH)/firmware_bin/WCNSS_cfg.dat $(TARGET_OUT_ETC)/firmware/wlan/qca_cld)
 $(shell cp $(LOCAL_PATH)/firmware_bin/WCNSS_qcom_cfg.ini $(TARGET_OUT_ETC)/firmware/wlan/qca_cld)
 endif
+$(shell ($(LOCAL_PATH)/firmware_hash_generator.sh $(NONHLOS_CONTENTS_XML_SOURCE) $(CNSS_LOCALE)))
 
 ###########################################################
 # This is set once per LOCAL_PATH, not per (kernel) module
