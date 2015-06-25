@@ -5587,11 +5587,14 @@ static int iw_setint_getnone(struct net_device *dev, struct iw_request_info *inf
 	case WE_SET_TXRX_FWSTATS:
 	{
            hddLog(LOG1, "WE_SET_TXRX_FWSTATS val %d", set_value);
+#if 0
            if (set_value == 9)
                dumpEnable =1;
            else if (set_value == 10)
                dumpEnable = 0;
            else
+#endif
+           dumpEnable = 0;
            ret = process_wma_set_command((int)pAdapter->sessionId,
 			   (int)WMA_VDEV_TXRX_FWSTATS_ENABLE_CMDID,
 			   set_value, VDEV_CMD);
@@ -6833,7 +6836,7 @@ static int iw_get_char_setnone(struct net_device *dev, struct iw_request_info *i
         {
             hdd_tx_rx_stats_t *pStats = &pAdapter->hdd_stats.hddTxRxStats;
 
-            printk(KERN_ERR //IKLOCSEN-2174:Enable extra driver logs dynamically
+            snprintf(extra, WE_MAX_STR_LEN,
                      "\nTransmit"
                      "\ncalled %u, dropped %u, backpressured %u, queued %u"
                      "\n      dropped BK %u, BE %u, VI %u, VO %u"

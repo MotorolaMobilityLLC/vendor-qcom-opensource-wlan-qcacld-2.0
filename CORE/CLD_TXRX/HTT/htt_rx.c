@@ -812,62 +812,10 @@ htt_rx_print_rx_indication(
 
     msg_word = (u_int32_t *)adf_nbuf_data(rx_ind_msg);
 
-    VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
-            "------------------HTT RXIND-----------------------------\n");
-    VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
-            "alloc idx paddr %x (*vaddr) %d\n",
-                  pdev->rx_ring.alloc_idx.paddr,
-                  *pdev->rx_ring.alloc_idx.vaddr);
-
-    VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
-            "sw_rd_idx msdu_payld %d msdu_desc %d\n",
-                 pdev->rx_ring.sw_rd_idx.msdu_payld,
-                 pdev->rx_ring.sw_rd_idx.msdu_desc);
-
-    VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
-            "dbg_ring_idx %d\n", pdev->rx_ring.dbg_ring_idx);
-
-    VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
-            "fill_level %d fill_cnt %d\n",pdev->rx_ring.fill_level,
-                  pdev->rx_ring.fill_cnt);
-
-    VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
-            "initial msdu_payld %d curr mpdu range %d curr mpdu cnt %d\n",
-                  pdev->rx_ring.dbg_initial_msdu_payld,
-                  pdev->rx_ring.dbg_mpdu_range,
-                  pdev->rx_ring.dbg_mpdu_count);
-
-    /* Print the RX_IND contents */
-
-    VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
-            "peer id %x RV %x FV %x ext_tid %x msg_type %x\n",
-                  HTT_RX_IND_PEER_ID_GET(*msg_word),
-                  HTT_RX_IND_REL_VALID_GET(*msg_word),
-                  HTT_RX_IND_FLUSH_VALID_GET(*msg_word),
-                  HTT_RX_IND_EXT_TID_GET(*msg_word),
-                  HTT_T2H_MSG_TYPE_GET(*msg_word));
-
-    VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
-            "num_mpdu_ranges %x rel_seq_num_end %x rel_seq_num_start %x\n"
-                 " flush_seq_num_end %x flush_seq_num_start %x\n",
-                  HTT_RX_IND_NUM_MPDU_RANGES_GET(*(msg_word + 1)),
-                  HTT_RX_IND_REL_SEQ_NUM_END_GET(*(msg_word + 1)),
-                  HTT_RX_IND_REL_SEQ_NUM_START_GET(*(msg_word + 1)),
-                  HTT_RX_IND_FLUSH_SEQ_NUM_END_GET(*(msg_word + 1)),
-                  HTT_RX_IND_FLUSH_SEQ_NUM_START_GET(*(msg_word + 1)));
-
-    VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
-            "fw_rx_desc_bytes %x\n", HTT_RX_IND_FW_RX_DESC_BYTES_GET(
-       *(msg_word + 2 + HTT_RX_PPDU_DESC_SIZE32)));
 
     /* receive MSDU desc for current frame */
     byte_offset = HTT_ENDIAN_BYTE_IDX_SWAP(HTT_RX_IND_FW_RX_DESC_BYTE_OFFSET +
                                             pdev->rx_ind_msdu_byte_idx);
-
-    VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
-            "msdu byte idx %x msdu desc %x\n", pdev->rx_ind_msdu_byte_idx,
-                  HTT_RX_IND_FW_RX_DESC_BYTES_GET(
-                     *(msg_word + 2 + HTT_RX_PPDU_DESC_SIZE32)));
 
     num_mpdu_range = HTT_RX_IND_NUM_MPDU_RANGES_GET(*(msg_word + 1));
 
@@ -878,11 +826,7 @@ htt_rx_print_rx_indication(
         htt_rx_ind_mpdu_range_info(
             pdev, rx_ind_msg, mpdu_range, &status, &num_mpdus);
 
-        VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,
-                "mpdu_range %x status %x num_mpdus %x\n",
-                      pdev->rx_ind_msdu_byte_idx, status, num_mpdus);
     }
-    VOS_TRACE(VOS_MODULE_ID_TXRX, VOS_TRACE_LEVEL_ERROR,"---------------------------------------------------------\n");
 }
 #endif
 
