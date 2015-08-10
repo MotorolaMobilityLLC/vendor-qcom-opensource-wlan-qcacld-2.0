@@ -1308,6 +1308,9 @@ ifneq ($(CNSS_LOCALE),)
 CDEFINES += -DCNSS_LOCALE_$(CNSS_LOCALE)
 endif
 
+#enable LFR metrices
+CDEFINES += -DFEATURE_WLAN_LFR_METRICS
+
 KBUILD_CPPFLAGS += $(CDEFINES)
 
 # Currently, for versions of gcc which support it, the kernel Makefile
