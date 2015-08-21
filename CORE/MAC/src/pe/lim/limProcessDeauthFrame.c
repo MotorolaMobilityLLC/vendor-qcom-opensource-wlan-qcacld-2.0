@@ -164,6 +164,9 @@ limProcessDeauthFrame(tpAniSirGlobal pMac, tANI_U8 *pRxPacketInfo, tpPESession p
         limDot11ReasonStr(reasonCode),
         MAC_ADDR_ARRAY(pHdr->sa));)
 
+        pr_info("wlan: Deauth frame rssi = %d \n", (uint)abs((tANI_S8)WDA_GET_RX_RSSI_NORMALIZED(
+                                                       pRxPacketInfo)));
+
     if (limCheckDisassocDeauthAckPending(pMac, (tANI_U8*)pHdr->sa))
     {
         PELOGE(limLog(pMac, LOGE,
