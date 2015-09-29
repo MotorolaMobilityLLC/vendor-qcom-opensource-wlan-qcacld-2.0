@@ -50,16 +50,12 @@
 #include "event.h"
 #include "msg.h"
 #include "log.h"
+
 #include "diag_lsm.h"
 #include "diagpkt.h"
 #include "diagcmd.h"
 #include "diag.h"
 #include "cld-diag-parser.h"
-//Begin IKSWL-8571:LAN Firmware and driver logs
-#include "zlib.h"
-#include <stdbool.h>
-#include <dirent.h>
-//End IKSWL-8571
 
 #ifdef ANDROID
 /* CAPs needed
@@ -75,14 +71,6 @@ const uint32_t capabilities = (1 << CAP_NET_RAW) | (1 << CAP_NET_ADMIN);
  * AID_WIFI      : WIFI Operation
  */
 const gid_t groups[] = {AID_INET, AID_NET_ADMIN, AID_QCOM_DIAG, AID_WIFI};
-
-//Begin IKSWL-8571:LAN Firmware and driver logs
-char logFilePath[PATH_MAX];
-char parentDir[] = "/data/misc/wifi";
-const char logDir[] ="logs";
-#define MAX_FILES 20
-//End IKSWL-8571
-
 #endif
 
 const char options[] =
@@ -107,7 +95,7 @@ const char *fwlog_res_file;
 int32_t max_records;
 int32_t record = 0;
 const char *progname;
-char dbglogoutfile[PATH_MAX]={0}; //IKSWL-8571
+char dbglogoutfile[PATH_MAX];
 int32_t optionflag = 0;
 boolean isDriverLoaded = FALSE;
 const char driverLoaded[] = "KNLREADY";
@@ -115,15 +103,9 @@ const char driverUnLoaded[] = "KNLCLOSE";
 
 int32_t rec_limit = 100000000; /* Million records is a good default */
 
-//Begin IKSWL-8571:LAN Firmware and driver logs
-void  createLogFileName(char * filenme,int len);
-void handleLogFileMaxSizeLimit ();
-void compressFile(const char* fromFileName);
-void processFileClose();
-//END IKSWL-8571
 int changeOwnerMod(const char * fileName);
-
-static void usage(void)
+static void
+usage(void)
 {
     fprintf(stderr, "Usage:\n%s options\n", progname);
     fprintf(stderr, "%s\n", options);
@@ -235,7 +217,7 @@ cnssdiagservice_cap_handle(void)
     /* Set the capabilities */
     if (capset(cap_header, cap_data) < 0)
     {
-        ALOGE("%d failed capset error:%s", __LINE__, strerror(errno)); //IKSWL-8571
+        printf("%d failed capset error:%s", __LINE__, strerror(errno));
         return -1;
     }
     return 0;
@@ -289,16 +271,12 @@ void process_cnss_log_file(uint8_t *dbgbuf)
               record, timestamp, length, dropped);
     }
     if ((res = fwrite(dbgbuf, RECLEN, 1, log_out)) != 1){
-        ALOGE("fwrite error to write to logfile");
+        perror("fwrite");
         return;
     }
     fflush(log_out);
-    //Begin IKSWL-8571:LAN Firmware and driver logs
-    if (record > max_records){
-        handleLogFileMaxSizeLimit();
+    if (record == max_records)
         record = 0;
-   }
-   //End IKSWL-8571
 }
 /*
  * Process FW debug, FW event and FW log messages
@@ -325,11 +303,7 @@ void process_cnss_diag_msg(tAniNlHdr *wnl)
 
     if (wnl->nlh.nlmsg_type == WLAN_NL_MSG_CNSS_HOST_MSG
         && (wnl->wmsg.type == ANI_NL_MSG_LOG_HOST_MSG_TYPE)) {
-        process_cnss_host_message(wnl, optionflag, log_out, &record, max_records);
-        //Begin IKSWL-8571:LAN Firmware and driver logs
-        if (record > max_records)
-            handleLogFileMaxSizeLimit();
-        //End IKSWL-8571
+          process_cnss_host_message(wnl, optionflag, log_out, &record, max_records);
     } else if (wnl->nlh.nlmsg_type == WLAN_NL_MSG_CNSS_HOST_EVENT_LOG
         && (wnl->wmsg.type == ANI_NL_MSG_LOG_HOST_EVENT_LOG_TYPE)) {
         process_cnss_host_diag_events_log((char *)((char *)&wnl->wmsg.length
@@ -362,10 +336,6 @@ void process_cnss_diag_msg(tAniNlHdr *wnl)
             version = get_le32((uint8_t *)&slot->dropped);
             process_diagfw_msg(&slot->payload[0], length, optionflag, log_out,
                                &record, max_records, version, sock_fd);
-            //Begin IKSWL-8571:LAN Firmware and driver logs
-            if (record > max_records)
-                handleLogFileMaxSizeLimit();
-            //End IKSWL-8571
         } else if (diag_type == DIAG_TYPE_HOST_MSG) {
             slot = (struct dbglog_slot *)dbgbuf;
             length = get_32((uint8_t *)&slot->length);
@@ -500,29 +470,12 @@ int32_t main(int32_t argc, char *argv[])
                 usage();
         }
     }
-    //Begin IKSWL-8571:LAN Firmware and driver logs
-    if (!(optionflag & (LOGFILE_FLAG | CONSOLE_FLAG | QXDM_FLAG | SILENT_FLAG
-          | DEBUG_FLAG))) {
-        optionflag |= LOGFILE_FLAG;
-        if(cnssdiagservice_cap_handle()) {
-            printf("Cap bouncing failed EXIT!!!");
-        }
-        memset(logFilePath, 0,sizeof(logFilePath));
-        snprintf(logFilePath,sizeof(logFilePath)-1, "%s/%s", parentDir, logDir);
-        res = mkdir(logFilePath, S_IRWXU | S_IRWXG);
-        if ( ( res != 0 ) && ( errno != EEXIST ) )
-        {
-           ALOGE(" Could not create parent dir errno=%d\n",errno);
-        }
-        res = 0;
-        changeOwnerMod(logFilePath);
-        // process the file that was  not zipped at last poweroff
-        processFileClose();
-        createLogFileName(dbglogoutfile,PATH_MAX);
-        optionflag |= LOGFILE_FLAG;
 
+    if (!(optionflag & (LOGFILE_FLAG | CONSOLE_FLAG | QXDM_FLAG | SILENT_FLAG
+           | DEBUG_FLAG))) {
+        usage();
+        return -1;
     }
-    //End IKSWL-8571
 
     if (optionflag & QXDM_FLAG) {
         /* Intialize the fd required for diag APIs */
@@ -568,7 +521,7 @@ int32_t main(int32_t argc, char *argv[])
         log_out = fopen(dbglogoutfile, "w");
 
         if (log_out == NULL) {
-            ALOGE("Failed to create output file %s error=%s ",dbglogoutfile, strerror(errno));
+            perror("Failed to create output file");
             close(sock_fd);
             free(nlh);
             return -1;
@@ -635,228 +588,4 @@ int32_t main(int32_t argc, char *argv[])
     close(sock_fd);
     free(nlh);
     return 0;
-}
-
-//Begin IKSWL-8571:LAN Firmware and driver logs
-void  createLogFileName(char * filename,int len) {
-    struct timeval tv;
-    char timestamp_buf[30];
-    time_t curtime;
-    struct tm *tm_ptr = NULL;
-    memset(filename,0,len);
-    snprintf(filename,PATH_MAX,"%s/",logFilePath);
-    gettimeofday(&tv, NULL);
-    curtime=tv.tv_sec;
-    tm_ptr = localtime(&curtime);
-    if (tm_ptr)
-        strftime(timestamp_buf,30,"%Y%m%d_%H%M%S",tm_ptr);
-    else
-        strlcpy(timestamp_buf, "00000000_000000", 30);
-    snprintf( filename+(strlen(logFilePath)+1),len-(strlen(logFilePath)+1),"wlanLog_%s",timestamp_buf);
-    return ;
-}
-
-void handleLogFileMaxSizeLimit () {
-    ALOGD("HandleLogFileMaxSizeLimit enter ");
-    fclose(log_out);
-    log_out = NULL;
-    record =0;
-    processFileClose();
-    createLogFileName(dbglogoutfile,PATH_MAX);
-    log_out = fopen(dbglogoutfile, "w");
-    if (log_out == NULL) {
-            ALOGE("Failed to create output file");
-            close(sock_fd);
-            free(nlh);
-            return;
-    }
-    fclose(log_out);
-    changeOwnerMod(dbglogoutfile);
-    log_out = fopen(dbglogoutfile, "w");
-    if (log_out == NULL) {
-            ALOGE("Failed to open output file %s error=%s ",dbglogoutfile, strerror(errno));
-            close(sock_fd);
-            free(nlh);
-            return;
-    }
-    return;
-}
-
-void compressFile(const char* fromFileName) {
-    FILE* fromFile = NULL;
-    gzFile toFile = NULL;
-    static char buf[8192];
-    char toFilePath[PATH_MAX] ={};
-    char fromFilePath[PATH_MAX] ={};
-    bool isSuccess = false;
-    // Setup the source file.
-    snprintf(fromFilePath, sizeof(fromFilePath), "/%s",  fromFileName);
-    fromFile = fopen(fromFilePath, "r");
-    if (NULL == fromFile) {
-        ALOGE("fopen(%s) failed; errno=%s", fromFilePath, strerror(errno));
-        goto cleanup;
-    }
-    // Setup the destination file.
-    snprintf(toFilePath, sizeof(toFilePath), "%s.gz",fromFileName);
-    toFile = gzopen(toFilePath, "w");
-    if (NULL == toFile) {
-        ALOGE("gzopen(%s) failed; errno=%s", toFilePath, strerror(errno));
-        goto cleanup;
-    }
-
-    memset(buf, 0, sizeof(buf));
-    // Compress & copy.
-    while (!feof(fromFile)) {
-        size_t nBytesRead = fread(&buf[0], sizeof(char), sizeof(buf), fromFile);
-        if (ferror(fromFile)) {
-            if (EINTR == errno) {
-                clearerr(fromFile);
-            } else {
-                ALOGE("fread() failed; errno=%s", strerror(errno));
-                goto cleanup;
-            }
-        }
-        if (0 < nBytesRead) {
-            size_t nBytesWritten = gzwrite(toFile, &buf[0], nBytesRead);
-            if (0 == nBytesWritten) {
-                int gzErr;
-                const char* gzErrStr = gzerror(toFile, &gzErr);
-                if (Z_ERRNO == gzErr) {
-                    if (EINTR == errno) {
-                        gzclearerr(toFile);
-                    } else {
-                        ALOGE("gzwrite() failed; errno=%s", strerror(errno));
-                        goto cleanup;
-                    }
-                } else {
-                    ALOGE("gzwrite() failed; gzerror=%s", gzErrStr ? gzErrStr : "(null)");
-                    goto cleanup;
-                }
-            }
-        }
-    }
-   isSuccess = true;
-cleanup:
-    if (fromFile)
-        fclose(fromFile);
-    if (toFile) {
-        gzclose(toFile);
-        changeOwnerMod(toFilePath);
-    }
-
-    // Delete uncompressed file only if compress is success.
-    if (isSuccess)
-        unlink(fromFilePath);
-
-    return;
-}
-
-void processFileClose() {
-    struct dirent **eps;
-    char  filePath[PATH_MAX] = {0};
-    int fileCount =0;
-    if (dbglogoutfile[0] != 0) {
-        compressFile(dbglogoutfile);
-    } else {
-        //This means we have just started logging service check and compress any  uncompressed ones.
-        DIR *dp;
-        struct dirent *ep;
-        dp = opendir(logFilePath);
-        if (dp != NULL) {
-            //traverse through and find uncompressed files
-            while ((ep = readdir(dp)) != NULL){
-               if (ep->d_name[0] == '.'){
-                   //donot consider . and .. files
-                   continue;
-               }
-
-               if (strstr(ep->d_name,".gz") == NULL) {
-                  snprintf(filePath, sizeof(filePath),"%s/%s",logFilePath,ep->d_name);
-                  compressFile(filePath);
-               }
-           }
-        }
-    }
-    //check and remove last modified log file
-    if ( (fileCount = scandir(logFilePath, &eps, 0, alphasort)) < 0) {
-        ALOGE("Scandir failed for %s  errorno=%d\n",logFilePath,errno);
-    } else {
-        DIR *dp;
-        struct dirent *ep;
-        struct stat structstat;
-        char oldfile[30];
-        unsigned long modified=0;
-        static char cwd[1024]={};
-        int i = 0;
-
-        // remember and change dir for stat and unlink
-        if (getcwd(cwd, sizeof(cwd)) == NULL) {
-            ALOGE(" getcwd failed errorno=%d\n",errno);
-        }
-        if (chdir(logFilePath)) {
-            ALOGE(" chdir failed errorno=%d\n",errno);
-        }
-
-        for (i=0; i++; i<fileCount) {
-           free( eps[i]);
-        }
-        free(eps);
-
-        //check and remove last modified log file
-        while (fileCount >= (MAX_FILES+4)) {
-            int j=0;
-            dp = opendir(logFilePath);
-            if (dp != NULL) {
-               modified =0;
-                //traverse through and find the oldest file in dir:w
-                while ((ep = readdir(dp)) != NULL){
-                    if (ep->d_name[0] == '.'){
-                     //donot consider . and .. files
-                    continue;
-                    }
-                    if (stat(ep->d_name, &structstat) <0) {
-                    }
-                    if ( ! S_ISREG(structstat.st_mode)) {
-                        continue;
-                    }
-                    if ( (modified > structstat.st_mtime) || modified==0) {
-                        // copy file based on mofified file name
-                        modified = structstat.st_mtime;
-                        memset(oldfile,0,sizeof(oldfile));
-                        snprintf(oldfile,sizeof(oldfile), "%s", ep->d_name);
-                    }
-                }
-                if (closedir(dp))
-                  ALOGE("Close dir failed errorno= %d\n",errno);
-                //remove the oldest file
-                if (unlink(oldfile)) {
-                    ALOGE(" unlink failed for %s errno = %d\n",oldfile , errno);
-                } else {
-                    fileCount--;
-                }
-            } else  {
-                ALOGE("Unable to open logs dir...");
-            }
-        }
-        //restore pwd
-        if ((cwd == NULL) || chdir(cwd)) {
-            ALOGE(" chdir restore failed errorno=%d\n",errno);
-        }
-
-    }
-}
-//End IKSWL-8571
-
-int changeOwnerMod(const char * filePath) {
-    int status = 0;
-    if (chown(filePath, AID_SYSTEM, AID_WIFI)){
-        ALOGE("Failed to change ownership  of gz %s error=%s ",filePath, strerror(errno));
-        status = -1;
-    }
-    if (chmod(filePath, S_IRWXU | S_IRWXG)) {
-        ALOGE("Failed to change mode  of gz %s error=%s ",filePath, strerror(errno));
-        if (!status)
-            status = -1;
-    }
-    return status;
 }
