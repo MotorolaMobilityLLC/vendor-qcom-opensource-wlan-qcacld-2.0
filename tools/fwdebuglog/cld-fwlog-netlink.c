@@ -519,18 +519,8 @@ int32_t main(int32_t argc, char *argv[])
         printf("Storing last %d records\n", max_records);
 
         log_out = fopen(dbglogoutfile, "w");
-
         if (log_out == NULL) {
             perror("Failed to create output file");
-            close(sock_fd);
-            free(nlh);
-            return -1;
-        }
-        fclose(log_out);
-        changeOwnerMod(dbglogoutfile);
-        log_out = fopen(dbglogoutfile, "w");
-        if (log_out == NULL) {
-            ALOGE("Failed to open output file %s error=%s ",dbglogoutfile, strerror(errno));
             close(sock_fd);
             free(nlh);
             return -1;
