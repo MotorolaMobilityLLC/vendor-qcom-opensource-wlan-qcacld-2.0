@@ -90,7 +90,7 @@ static int sock_fd = -1;
 struct msghdr msg;
 
 static FILE *fwlog_res;
-FILE *log_out = NULL;
+static FILE *log_out;
 const char *fwlog_res_file;
 int32_t max_records;
 int32_t record = 0;
