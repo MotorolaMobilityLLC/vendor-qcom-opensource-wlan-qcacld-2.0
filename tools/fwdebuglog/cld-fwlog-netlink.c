@@ -41,6 +41,7 @@
 #include <sys/ioctl.h>
 #include <sys/capability.h>
 #include <linux/prctl.h>
+#include <sys/prctl.h>
 #include <pwd.h>
 #ifdef ANDROID
 #include <private/android_filesystem_config.h>
@@ -102,7 +103,6 @@ const char driverLoaded[] = "KNLREADY";
 const char driverUnLoaded[] = "KNLCLOSE";
 
 int32_t rec_limit = 100000000; /* Million records is a good default */
-
 int changeOwnerMod(const char * fileName);
 static void
 usage(void)
