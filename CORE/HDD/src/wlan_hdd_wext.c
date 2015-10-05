@@ -243,6 +243,9 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WE_CLEAR_STATS                        86
 #define WE_SET_CHANNEL                        87
 #define WE_SET_CHANNEL_RANGE                  88  // Motorola, IKDREL3KK-5698
+// The below one should always be the last entry
+// It will have a value of last sub_cmd + 1
+#define MAX_SUB_CMD                           89  // Motorola, IKDREL3KK-10418
 
 /* Private ioctls and their sub-ioctls */
 #define WLAN_PRIV_SET_NONE_GET_INT    (SIOCIWFIRSTPRIV + 1)
@@ -3921,6 +3924,25 @@ static int iw_get_rssi(struct net_device *dev,
 
    /* a value is being successfully returned */
    return rc;
+}
+
+
+/*
+ * Support for SoftAP channel range private command
+ */
+static int iw_softap_set_channel_range( struct net_device *dev,
+                                        int startChannel,
+                                        int endChannel,
+                                        int band)
+{
+    int ret = 0;
+    //tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pHostapdAdapter);
+    //hdd_context_t *pHddCtx = WLAN_HDD_GET_CTX(pHostapdAdapter);
+
+//    status = WLANSAP_SetChannelRange(hHal, startChannel, endChannel, band);
+
+//    pHddCtx->is_dynamic_channel_range_set = 1;
+    return ret;
 }
 
 VOS_STATUS  wlan_hdd_enter_bmps(hdd_adapter_t *pAdapter, int mode)
