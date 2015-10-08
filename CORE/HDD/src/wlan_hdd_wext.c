@@ -6044,7 +6044,7 @@ static int iw_setint_getnone(struct net_device *dev, struct iw_request_info *inf
            } else {
                set_value = 0;
                startChannel = 1;
-               endChannel   = 14;
+               endChannel   = 11; //a19110 MOT a19110 IKSWM-3870 Restrict to FCC
            }
 
            ret = iw_softap_set_channel_range( dev, startChannel, endChannel, set_value);
