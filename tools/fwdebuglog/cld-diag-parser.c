@@ -1031,15 +1031,10 @@ process_diagfw_msg(uint8_t *datap, uint16_t len, uint32_t optionflag,
                     lrecord++;
                     if (!((optionflag & SILENT_FLAG) == SILENT_FLAG))
                         printf("%d: %s\n", lrecord, buf);
-
                     res = diag_printf(
                          buf, vdevid, vdevlevel, optionflag, timestamp, log_out
                               );
                     //fseek(log_out, lrecord * res, SEEK_SET);
-                    if (lrecord == max_records) {
-                        lrecord = 0;
-                        fseek(log_out, lrecord * res, SEEK_SET);
-                    }
                     *record = lrecord;
                 }
                 if (optionflag & (CONSOLE_FLAG | QXDM_FLAG))
@@ -1177,10 +1172,6 @@ void process_cnss_host_message(tAniNlHdr *wnl, int32_t optionflag,
             if (!((optionflag & SILENT_FLAG) == SILENT_FLAG))
                 printf("%d: %s\n", lrecord, wlanLog);
             res = fprintf(log_out, "%s\n", wlanLog);
-            if (lrecord == max_records) {
-                lrecord = 0;
-                fseek(log_out, lrecord * res, SEEK_SET);
-            }
             *record = lrecord;
         }
         else if (optionflag & CONSOLE_FLAG) {
