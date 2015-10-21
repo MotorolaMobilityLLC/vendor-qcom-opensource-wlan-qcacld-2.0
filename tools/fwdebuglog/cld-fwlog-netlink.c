@@ -60,6 +60,7 @@
 #include "zlib.h"
 #include <stdbool.h>
 #include <dirent.h>
+#include <sys/stat.h> // Motorola IKSWM-8525
 //End IKSWL-8571
 
 #ifdef ANDROID
