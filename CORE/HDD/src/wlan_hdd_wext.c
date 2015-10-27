@@ -6003,6 +6003,12 @@ static int iw_setchar_getnone(struct net_device *dev, struct iw_request_info *in
         return -EBUSY;
     }
 
+    if (!capable(CAP_NET_ADMIN)){
+        VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                  FL("permission check failed"));
+        return -EPERM;
+    }
+
     /* ODD number is used for set, copy data using copy_from_user */
     pBuffer = mem_alloc_copy_from_user_helper(wrqu->data.pointer,
                                               wrqu->data.length);
