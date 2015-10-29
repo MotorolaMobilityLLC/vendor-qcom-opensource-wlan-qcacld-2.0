@@ -7507,6 +7507,12 @@ int iw_set_var_ints_getnone(struct net_device *dev, struct iw_request_info *info
         return -EBUSY;
     }
 
+    if (!capable(CAP_NET_ADMIN)) {
+            VOS_TRACE(VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_ERROR,
+                    FL("permission check failed"));
+            return -EPERM;
+    }
+
     if (num_args > MAX_VAR_ARGS)
     {
        num_args = MAX_VAR_ARGS;
