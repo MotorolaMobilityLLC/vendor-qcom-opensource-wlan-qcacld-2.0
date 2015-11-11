@@ -1271,7 +1271,11 @@ CDEFINES += -DFEATURE_SECURE_FIRMWARE
 endif
 
 ifeq ($(CONFIG_MSM8994), 1)
+ifeq ($(CNSS_LOCALE), china)
+CDEFINES += -DCONFIG_MSM8994_$(CNSS_LOCALE)
+else
 CDEFINES += -DCONFIG_MSM8994
+endif
 endif
 
 #Enable/disable FW hash check for secure firmware feature
