@@ -149,6 +149,9 @@ ifeq ($(KERNEL_BUILD), 0)
 
 endif
 
+#Flag to enable/disable secure firmware feature
+CONFIG_CNSS_SECURE_FW := n
+
 ifdef CPTCFG_QCA_CLD_WLAN
 	WLAN_ROOT := $(BACKPORT_PWD)/drivers/staging/qcacld-2.0
 	CONFIG_QCA_CLD_WLAN=$(CPTCFG_QCA_CLD_WLAN)
