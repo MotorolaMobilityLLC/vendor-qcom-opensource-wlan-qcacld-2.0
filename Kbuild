@@ -1311,6 +1311,9 @@ endif
 #enable LFR metrices
 CDEFINES += -DFEATURE_WLAN_LFR_METRICS
 
+#enable RX_RING buffer logging
+CDEFINES += -DDEBUG_RX_RING_BUFFER
+
 KBUILD_CPPFLAGS += $(CDEFINES)
 
 # Currently, for versions of gcc which support it, the kernel Makefile
