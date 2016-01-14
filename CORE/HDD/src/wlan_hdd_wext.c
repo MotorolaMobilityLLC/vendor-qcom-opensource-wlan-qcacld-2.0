@@ -5981,7 +5981,9 @@ static int iw_setint_getnone(struct net_device *dev, struct iw_request_info *inf
            } else {
                set_value = 0;
                startChannel = 1;
-               endChannel   = 14;
+               //Motorola rohita IKSWM-12799 Restrict mhs 2.4 ghz channels to FCC
+               endChannel   = 11;
+               //END IKSWM-12799
            }
 
            ret = iw_softap_set_channel_range( dev, startChannel, endChannel, set_value);
