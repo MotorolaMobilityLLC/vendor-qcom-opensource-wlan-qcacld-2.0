@@ -7119,7 +7119,7 @@ static int __iw_setint_getnone(struct net_device *dev,
            } else {
                set_value = 0;
                startChannel = 1;
-               endChannel   = 14;
+               endChannel   = 11;
            }
 
            ret = iw_softap_set_channel_range( dev, startChannel, endChannel, set_value);
