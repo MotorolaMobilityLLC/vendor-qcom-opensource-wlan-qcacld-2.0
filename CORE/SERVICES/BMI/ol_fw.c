@@ -26,6 +26,7 @@
  */
 
 #include <linux/firmware.h>
+#include <linux/crc32.h>
 #include "ol_if_athvar.h"
 #include "ol_fw.h"
 #include "targaddrs.h"
@@ -583,6 +584,84 @@ const char *ol_get_fw_name(struct ol_softc *scn)
 }
 #endif
 
+
+/**
+ * qca6174_compute_checksum_only() - compute checksum of 6320 eeprom memory in uint16_t
+ * @ half_ptr: pointer to 6320 eeprom memory in uint16_t pointer
+ * @ length: length of 6320 eeprom memory in unit of uint16_t
+ *
+ * Return: sum calculated for checksum
+ */
+static u_int16_t qca6174_compute_checksum_only(u_int16_t *half_ptr, u_int16_t length)
+{
+	u_int16_t sum = 0, i;
+	for(i = 0; i < length; i++) { sum ^= *half_ptr++; }
+	return(sum);
+}
+
+/* Verify that the trailing CRC-32 matches the preceding content.
+*/
+static int verify_crc32(const struct firmware *fw_entry)
+{
+	u_int8_t *data = (u_int8_t *)(fw_entry->data);
+	u_int8_t *data_crc = data + fw_entry->size - 4;
+	u_int32_t crc;
+
+	crc = ~crc32_le(~0, data, fw_entry->size - 4);
+	return ((data_crc[0] == (crc       & 0xFF)) &&
+			(data_crc[1] == (crc >> 8  & 0xFF)) &&
+			(data_crc[2] == (crc >> 16 & 0xFF)) &&
+			(data_crc[3] == (crc >> 24 & 0xFF)) );
+}
+
+/* BDF is copied in tempEeprom.
+* Check if 2g_scpc_cal.bin and 5g_scpc_cal.bin are available.
+* If yes, merge them into BDF and change checksum
+*/
+#define AR6320_EEPROM_CHECKSUM_OFFSET 0x2
+#define AR6320_EEPROM_CHECKSUM_LENGTH 0x2
+#define AR6320_EEPROM_2G_SCPC_CAL_DATA_OFFSET 0x280
+#define AR6320_EEPROM_2G_SCPC_CAL_DATA_LENGTH 0x17A
+#define AR6320_EEPROM_5G_SCPC_CAL_DATA_OFFSET 0xAE8
+#define AR6320_EEPROM_5G_SCPC_CAL_DATA_LENGTH 0x360
+
+static void load_and_merge_scpc_calibration(struct ol_softc *scn, u_int8_t *tempEeprom,
+									u_int32_t fw_entry_size)
+{
+	u_int16_t sum;
+	const char *filename_2g_cal = "wlan/qca_cld/2g_scpc_cal.bin";
+	const char *filename_5g_cal = "wlan/qca_cld/5g_scpc_cal.bin";
+	const struct firmware *fw_entry_2g_cal = NULL;
+	const struct firmware *fw_entry_5g_cal = NULL;
+	/* merge to BDF only if 2G cal and
+	* 5G cal files are available
+	*/
+	if ((request_firmware(&fw_entry_2g_cal, filename_2g_cal, scn->sc_osdev->device) == 0) &&
+		(request_firmware(&fw_entry_5g_cal, filename_5g_cal, scn->sc_osdev->device) == 0) &&
+		(fw_entry_2g_cal->size == AR6320_EEPROM_2G_SCPC_CAL_DATA_LENGTH + 4) &&
+		(fw_entry_5g_cal->size == AR6320_EEPROM_5G_SCPC_CAL_DATA_LENGTH + 4) &&
+		(verify_crc32(fw_entry_2g_cal)) &&
+		(verify_crc32(fw_entry_5g_cal)) )
+	{
+		OS_MEMCPY(tempEeprom + AR6320_EEPROM_2G_SCPC_CAL_DATA_OFFSET,
+				(u_int8_t *)fw_entry_2g_cal->data, AR6320_EEPROM_2G_SCPC_CAL_DATA_LENGTH);
+		OS_MEMCPY(tempEeprom + AR6320_EEPROM_5G_SCPC_CAL_DATA_OFFSET,
+				(u_int8_t *)fw_entry_5g_cal->data, AR6320_EEPROM_5G_SCPC_CAL_DATA_LENGTH);
+
+		/* compute checksum with new content */
+		OS_MEMSET(tempEeprom + AR6320_EEPROM_CHECKSUM_OFFSET, 0, AR6320_EEPROM_CHECKSUM_LENGTH);
+		sum = qca6174_compute_checksum_only((u_int16_t *)tempEeprom, fw_entry_size/sizeof(u_int16_t));
+		sum = 0xFFFF ^ sum;
+		OS_MEMCPY(tempEeprom + AR6320_EEPROM_CHECKSUM_OFFSET, &sum, AR6320_EEPROM_CHECKSUM_LENGTH);
+		pr_info("%s: cal files merged\n", __func__);
+	} else {
+		pr_info("%s: cal files not merged\n", __func__);
+	}
+	/* release the memory */
+	if (fw_entry_2g_cal) release_firmware(fw_entry_2g_cal);
+	if (fw_entry_5g_cal) release_firmware(fw_entry_5g_cal);
+}
+
 static int __ol_transfer_bin_file(struct ol_softc *scn, ATH_BIN_FILE file,
 				u_int32_t address, bool compressed)
 {
@@ -788,6 +867,7 @@ static int __ol_transfer_bin_file(struct ol_softc *scn, ATH_BIN_FILE file,
 				("wlan: update boarddata failed, status=%d.\n",
 				 status));
 		}
+		load_and_merge_scpc_calibration(scn, tempEeprom, fw_entry_size);
 
 		switch (scn->target_type) {
 		default:
