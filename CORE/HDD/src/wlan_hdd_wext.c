@@ -117,6 +117,9 @@
 #define HDD_SET_MCBC_FILTERS_TO_FW      1
 #define HDD_DELETE_MCBC_FILTERS_FROM_FW 0
 
+extern const sRegulatoryChannel *regChannels; //MOT a19110 IKSWM-20881
+
+extern int wlan_hdd_cfg80211_update_band(struct wiphy *wiphy, eCsrBand eBand);
 static int ioctl_debug;
 module_param(ioctl_debug, int, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 
@@ -349,6 +352,7 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WE_GET_OEM_DATA_CAP  13
 #endif
 #define WE_GET_SNR           14
+#define WE_GET_CHANNELS_FOR_AP 15 //MOT a19110 IKSWM-20881
 
 /* Private ioctls and their sub-ioctls */
 #define WLAN_PRIV_SET_NONE_GET_NONE   (SIOCIWFIRSTPRIV + 6)
@@ -1435,6 +1439,85 @@ VOS_STATUS wlan_hdd_get_snr(hdd_adapter_t *pAdapter, v_S7_t *snr)
    return VOS_STATUS_SUCCESS;
 }
 
+//BEGIN MOT a19110 IKSWM-20881 Support get channel list for AP
+static int __iw_get_channel_list_for_ap(struct net_device *dev,
+                          struct iw_request_info *info,
+                          union iwreq_data *wrqu, char *extra)
+{
+    v_U32_t num_channels = 0;
+    v_U8_t i = 0;
+    v_U8_t bandStartChannel = RF_CHAN_1;
+    v_U8_t bandEndChannel = RF_CHAN_165;
+    hdd_adapter_t *pHostapdAdapter = (netdev_priv(dev));
+    tHalHandle hHal = WLAN_HDD_GET_HAL_CTX(pHostapdAdapter);
+    tpChannelListInfo channel_list = (tpChannelListInfo)extra;
+    eCsrBand curBand = eCSR_BAND_ALL;
+    hdd_context_t *hdd_ctx;
+    int ret;
+
+    ENTER();
+
+    hdd_ctx = WLAN_HDD_GET_CTX(pHostapdAdapter);
+    ret = wlan_hdd_validate_context(hdd_ctx);
+    if (0 != ret)
+       return ret;
+
+    if (eHAL_STATUS_SUCCESS != sme_GetFreqBand(hHal,&curBand)) {
+        hddLog(LOGE,FL("not able get the current frequency band"));
+        return -EIO;
+    }
+    wrqu->data.length = sizeof(tChannelListInfo);
+    ENTER();
+
+    if (eCSR_BAND_24 == curBand) {
+        bandStartChannel = RF_CHAN_1;
+        bandEndChannel = RF_CHAN_14;
+    }
+    else if (eCSR_BAND_5G == curBand) {
+        bandStartChannel = RF_CHAN_36;
+        bandEndChannel = RF_CHAN_165;
+    }
+    if (curBand != eCSR_BAND_24) {
+        if (hdd_ctx->cfg_ini->dot11p_mode) {
+            bandEndChannel = RF_CHAN_184;
+        } else {
+            bandEndChannel = RF_CHAN_165;
+        }
+    }
+
+    hddLog(LOG1, FL("curBand = %d, bandStartChannel = %hu, "
+            "bandEndChannel = %hu "), curBand,
+            bandStartChannel, bandEndChannel);
+
+    for( i = bandStartChannel; i <= bandEndChannel; i++ ) {
+        if (NV_CHANNEL_ENABLE == regChannels[i].enabled) {
+            channel_list->channels[num_channels] = rfChannels[i].channelNum;
+            num_channels++;
+        }
+    }
+
+    hddLog(LOG1, FL(" number of channels %d"), num_channels);
+
+    channel_list->num_channels = num_channels;
+    EXIT();
+
+    return 0;
+}
+
+static int iw_get_channel_list_for_ap(struct net_device *dev,
+                               struct iw_request_info *info,
+                               union iwreq_data *wrqu, char *extra)
+{
+    int ret;
+
+    vos_ssr_protect(__func__);
+    ret = __iw_get_channel_list_for_ap(dev, info, wrqu,extra);
+    vos_ssr_unprotect(__func__);
+
+    return ret;
+
+}
+//END IKSWM-20881
 void hdd_StatisticsCB( void *pStats, void *pContext )
 {
    hdd_adapter_t             *pAdapter      = (hdd_adapter_t *)pContext;
@@ -8464,6 +8547,48 @@ static int __iw_get_char_setnone(struct net_device *dev,
             wrqu->data.length = strlen(extra) + 1;
             break;
         }
+        //BEGIN MOT a19110 IKSWM-20881 Add icotl for get channle list for AP
+        case WE_GET_CHANNELS_FOR_AP:
+        {
+            VOS_STATUS status;
+            v_U8_t i, len;
+            char* buf;
+            uint8_t ubuf[WNI_CFG_COUNTRY_CODE_LEN];
+            uint8_t ubuf_len = WNI_CFG_COUNTRY_CODE_LEN;
+            hdd_context_t *hdd_ctx = WLAN_HDD_GET_CTX(pAdapter);
+            tChannelListInfo channel_list;
+
+            memset(&channel_list, 0, sizeof(channel_list));
+            status = iw_get_channel_list_for_ap(dev, info,wrqu, (char *)&channel_list);
+            if (!VOS_IS_STATUS_SUCCESS(status)) {
+                hddLog(LOGE, FL("GetChannelList Failed!!!"));
+                return -EINVAL;
+            }
+            buf = extra;
+            /**
+             * Maximum channels = WNI_CFG_VALID_CHANNEL_LIST_LEN. Maximum buffer
+             * needed = 5 * number of channels. Check if sufficient
+             * buffer is available and then proceed to fill the buffer
+             */
+            if (WE_MAX_STR_LEN < (5 * WNI_CFG_VALID_CHANNEL_LIST_LEN)) {
+                hddLog(LOGE,FL("Insufficient Buffer to populate channel list"));
+                return -EINVAL;
+            }
+            len = scnprintf(buf, WE_MAX_STR_LEN, "%u ",channel_list.num_channels);
+            if (eHAL_STATUS_SUCCESS == sme_GetCountryCode(hdd_ctx->hHal,ubuf,&ubuf_len)) {
+                /* Printing Country code in getChannelList */
+                for (i = 0; i < (ubuf_len -1); i++)
+                    len += scnprintf(buf + len, WE_MAX_STR_LEN - len, "%c", ubuf[i]);
+            }
+
+            for (i = 0; i < channel_list.num_channels; i++) {
+                len += scnprintf(buf + len, WE_MAX_STR_LEN - len, " %u", channel_list.channels[i]);
+            }
+            wrqu->data.length = strlen(extra) + 1;
+
+            break;
+        }
+        //END IKSWM-20881
         default:
         {
             hddLog(LOGE, "%s: Invalid IOCTL command %d", __func__, sub_cmd );
@@ -12155,6 +12280,12 @@ static const struct iw_priv_args we_private_args[] = {
         0,
         IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
         "getSNR" },
+    //BEGIN MOT a19110 IKSWM-20881 Support ioctl for get channel list for AP
+    {   WE_GET_CHANNELS_FOR_AP,
+        0,
+        IW_PRIV_TYPE_CHAR| WE_MAX_STR_LEN,
+        "getChnlsForAp" },
+    //END IKSWM-20881
 
     /* handlers for main ioctl */
     {   WLAN_PRIV_SET_NONE_GET_NONE,
