@@ -22097,11 +22097,11 @@ static int __wlan_hdd_cfg80211_sched_scan_start(struct wiphy *wiphy,
      * slow_scan_period. This is less frequent scans and firmware shall be
      * in slow_scan_period mode until next PNO Start.
      */
-    pPnoRequest->fast_scan_period = request->interval;
-    pPnoRequest->fast_scan_max_cycles =
-                              pHddCtx->cfg_ini->configPNOScanTimerRepeatValue;
-    pPnoRequest->slow_scan_period = pHddCtx->cfg_ini->pno_slow_scan_multiplier *
-                                        pPnoRequest->fast_scan_period;
+    //BEGIN MOT a19110 IKSWM-31041 Modify PNO timers
+    pPnoRequest->fast_scan_period = 45000;
+    pPnoRequest->fast_scan_max_cycles = 7;
+    pPnoRequest->slow_scan_period = 480000;
+    //END IKSWM-31041
 
     hddLog(LOG1, "Base scan interval: %d sec PNOScanTimerRepeatValue: %d",
            (request->interval / 1000),
