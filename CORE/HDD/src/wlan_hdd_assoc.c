@@ -971,9 +971,12 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
 #endif /* QCA_PKT_PROTO_TRACE */
 
     /* HDD has initiated disconnect, do not send disconnect indication
-     * to kernel.
+     * to kernel. Sending disconnected event to kernel for userspace
+     * initiated disconnect will be handled by hdd_DisConnectHandler call
+     * to cfg80211_disconnected
      */
-    if (eConnectionState_Disconnecting == pHddStaCtx->conn_info.connState)
+    if ((eConnectionState_Disconnecting == pHddStaCtx->conn_info.connState) ||
+        (eConnectionState_NotConnected == pHddStaCtx->conn_info.connState))
     {
         VOS_TRACE( VOS_MODULE_ID_HDD, VOS_TRACE_LEVEL_INFO,
                    FL(" HDD has initiated a disconnect, no need to send"
@@ -1015,11 +1018,11 @@ static eHalStatus hdd_DisConnectHandler( hdd_adapter_t *pAdapter, tCsrRoamInfo *
                        pr_info(
                        "wlan: disconnected due to poor signal, rssi is %d dB\n",
                        pRoamInfo->rxRssi);
-               cfg80211_disconnected(dev, pRoamInfo->reasonCode, NULL, 0,
+               cfg80211_disconnected(dev, pRoamInfo->reasonCode, NULL, 0, true,
                                       GFP_KERNEL);
             }
             else
-                cfg80211_disconnected(dev, WLAN_REASON_UNSPECIFIED, NULL, 0,
+                cfg80211_disconnected(dev, WLAN_REASON_UNSPECIFIED, NULL, 0, true,
                                       GFP_KERNEL);
 
             hddLog(VOS_TRACE_LEVEL_INFO_HIGH,
