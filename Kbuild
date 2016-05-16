@@ -113,9 +113,6 @@ ifeq ($(KERNEL_BUILD), 0)
 	endif
 endif
 
-#Flag to enable/disable secure firmware feature
-CONFIG_CNSS_SECURE_FW := n
-
 ifdef CPTCFG_QCA_CLD_WLAN
 	WLAN_ROOT := $(BACKPORT_PWD)/drivers/staging/qcacld-2.0
 	CONFIG_QCA_CLD_WLAN=$(CPTCFG_QCA_CLD_WLAN)
@@ -278,6 +275,9 @@ CONFIG_TARGET_RAMDUMP_AFTER_KERNEL_PANIC := 1
 
 #Flag to enable Stats Ext implementation
 CONFIG_FEATURE_STATS_EXT := 1
+
+#Flag to enable/disable secure firmware feature
+CONFIG_CNSS_SECURE_FW := y
 
 #Flag to force the inclusion of the 802.11p channels because support
 #for these channels has not yet been added to the kernel.
