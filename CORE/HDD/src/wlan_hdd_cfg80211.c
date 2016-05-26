@@ -21533,22 +21533,6 @@ static int __wlan_hdd_cfg80211_set_pmksa(struct wiphy *wiphy, struct net_device 
         return status;
 
     halHandle = WLAN_HDD_GET_HAL_CTX(pAdapter);
-    //BEGIN MOT a19110 IKDREL3KK-2175 PNO enhancement
-#if 0
-    /* Driver gets only one time interval which is hard coded in
-     * supplicant for 10000ms. Taking power consumption into account 6 timers
-     * will be used, Timer value is increased exponentially i.e 10,20,40,
-     * 80,160,320 secs. And number of scan cycle for each timer
-     * is configurable through INI param gPNOScanTimerRepeatValue.
-     * If it is set to 0 only one timer will be used and PNO scan cycle
-     * will be repeated after each interval specified by supplicant
-     * till PNO is disabled.
-     */
-    if (0 == pHddCtx->cfg_ini->configPNOScanTimerRepeatValue)
-        pPnoRequest->scanTimers.ucScanTimersCount = HDD_PNO_SCAN_TIMERS_SET_ONE;
-    else
-        pPnoRequest->scanTimers.ucScanTimersCount =
-                                               HDD_PNO_SCAN_TIMERS_SET_MULTIPLE;
 
     vos_mem_copy(pmk_id.BSSID, pmksa->bssid, ETHER_ADDR_LEN);
     vos_mem_copy(pmk_id.PMKID, pmksa->pmkid, CSR_RSN_PMKID_SIZE);
@@ -21596,15 +21580,6 @@ static int __wlan_hdd_cfg80211_del_pmksa(struct wiphy *wiphy, struct net_device 
         hddLog(LOGE, FL("pmksa is NULL"));
         return -EINVAL;
     }
-    //Repeat last timer until pno disabled.
-    pPnoRequest->scanTimers.aTimerValues[i-1].uTimerRepeat = 0;
-#endif
-    pPnoRequest->scanTimers.ucScanTimersCount = 2;
-    pPnoRequest->scanTimers.aTimerValues[0].uTimerRepeat = 7;
-    pPnoRequest->scanTimers.aTimerValues[0].uTimerValue = 45;
-    pPnoRequest->scanTimers.aTimerValues[1].uTimerRepeat = 0;
-    pPnoRequest->scanTimers.aTimerValues[1].uTimerValue = 480;
-    //END IKDREL3KK-2175
 
     if (!pmksa->bssid) {
         hddLog(LOGE, FL("pmksa->bssid is NULL"));
