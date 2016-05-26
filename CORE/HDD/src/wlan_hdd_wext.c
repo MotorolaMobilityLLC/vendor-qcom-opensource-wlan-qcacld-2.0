@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2016 The Linux Foundation. All rights reserved.
+ * Copyrieht (c) 2011-2016 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -247,6 +247,7 @@ static const hdd_freq_chan_map_t freq_chan_map[] = { {2412, 1}, {2417, 2},
 #define WE_CLEAR_STATS                        86
 #define WE_SET_CHANNEL                        87
 #define WE_SET_CHANNEL_RANGE                  88  // Motorola, IKDREL3KK-5698
+#define MAX_SUB_CMD                           89  // Motorola, IKDREL3KK-10418
 
 /* Private ioctls and their sub-ioctls */
 #define WLAN_PRIV_SET_NONE_GET_INT    (SIOCIWFIRSTPRIV + 1)
@@ -7204,8 +7205,8 @@ static int __iw_setint_getnone(struct net_device *dev,
                startChannel = 1;
                endChannel   = 11;
            }
-
-           ret = iw_softap_set_channel_range( dev, startChannel, endChannel, set_value);
+           /*Need to understand the changes as this functon call is not their*/
+          // ret = iw_softap_set_channel_range( dev, startChannel, endChannel, set_value);
 
            break;
        }
