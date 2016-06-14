@@ -89,6 +89,21 @@ static struct hash_fw fw_hash = {
  0x9f, 0xdc, 0xda, 0x58, 0xd5, },
 
 };
+
+// BEGIN MOT a19110 IKSWM-44483 Implement carrier specific bdwlan file picking
+static u8 bdwlan_arg[SHA256_DIGEST_SIZE] = {0xa8, 0x52, 0xd4, 0x34, 0xf8, 0xc2, 0x7e, 0x8f, 0x03,
+                                            0x65, 0x5b, 0x55, 0x58, 0xe2, 0x83, 0xca, 0x6a, 0x8d,
+                                            0xa7, 0x4d, 0x26, 0xa1, 0x0a, 0x85, 0xcc, 0x8e, 0x3b,
+                                            0xa6, 0x5a, 0xc9, 0xa7, 0x3d, };
+static u8 bdwlan_ind[SHA256_DIGEST_SIZE] = {0xa8, 0x52, 0xd4, 0x34, 0xf8, 0xc2, 0x7e, 0x8f, 0x03,
+                                            0x65, 0x5b, 0x55, 0x58, 0xe2, 0x83, 0xca, 0x6a, 0x8d,
+                                            0xa7, 0x4d, 0x26, 0xa1, 0x0a, 0x85, 0xcc, 0x8e, 0x3b,
+                                            0xa6, 0x5a, 0xc9, 0xa7, 0x3d, };
+static u8 bdwlan_bra[SHA256_DIGEST_SIZE] = {0xa8, 0x52, 0xd4, 0x34, 0xf8, 0xc2, 0x7e, 0x8f, 0x03,
+                                            0x65, 0x5b, 0x55, 0x58, 0xe2, 0x83, 0xca, 0x6a, 0x8d,
+                                            0xa7, 0x4d, 0x26, 0xa1, 0x0a, 0x85, 0xcc, 0x8e, 0x3b,
+                                            0xa6, 0x5a, 0xc9, 0xa7, 0x3d, };
+// END IKSWM-44483
 #endif
 
 #if defined(HIF_PCI) || defined(HIF_SDIO)
@@ -776,6 +791,15 @@ static int __ol_transfer_bin_file(struct ol_softc *scn, ATH_BIN_FILE file,
 	tempEeprom = NULL;
 
 #ifdef FEATURE_SECURE_FIRMWARE
+// BEGIN MOT a19110 IKSWM-44483 Implement carrier specific bdwlan file picking
+	if(!strcmp(filename,"bdwlan30_arg.bin")) {
+		memcpy(fw_hash.bdwlan, bdwlan_arg, SHA256_DIGEST_SIZE);
+	} else if (!strcmp(filename,"bdwlan30_ind.bin")) {
+		memcpy(fw_hash.bdwlan, bdwlan_ind, SHA256_DIGEST_SIZE);
+	} else if (!strcmp(filename,"bdwlan30_bra.bin")) {
+		memcpy(fw_hash.bdwlan, bdwlan_bra, SHA256_DIGEST_SIZE);
+	}
+// END IKSWM-44483
 	if (scn->enable_fw_hash_check &&
 	    ol_check_fw_hash(fw_entry->data, fw_entry_size, file)) {
 		pr_err("Hash Check failed for file:%s\n", filename);
