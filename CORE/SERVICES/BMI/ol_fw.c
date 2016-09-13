@@ -26,7 +26,9 @@
  */
 
 #include <linux/firmware.h>
+#ifdef CONFIG_MSM8996
 #include <linux/crc32.h>
+#endif
 #include "ol_if_athvar.h"
 #include "ol_fw.h"
 #include "targaddrs.h"
@@ -621,6 +623,7 @@ const char *ol_get_fw_name(struct ol_softc *scn)
 #endif
 
 
+#ifdef CONFIG_MSM8996
 /**
  * qca6174_compute_checksum_only() - compute checksum of 6320 eeprom memory in uint16_t
  * @ half_ptr: pointer to 6320 eeprom memory in uint16_t pointer
@@ -697,6 +700,7 @@ static void load_and_merge_scpc_calibration(struct ol_softc *scn, u_int8_t *temp
 	if (fw_entry_2g_cal) release_firmware(fw_entry_2g_cal);
 	if (fw_entry_5g_cal) release_firmware(fw_entry_5g_cal);
 }
+#endif //CONFIG_MSM8996
 
 static int __ol_transfer_bin_file(struct ol_softc *scn, ATH_BIN_FILE file,
 				u_int32_t address, bool compressed)
@@ -903,7 +907,9 @@ static int __ol_transfer_bin_file(struct ol_softc *scn, ATH_BIN_FILE file,
 				("wlan: update boarddata failed, status=%d.\n",
 				 status));
 		}
+#ifdef CONFIG_MSM8996
 		load_and_merge_scpc_calibration(scn, tempEeprom, fw_entry_size);
+#endif
 
 		switch (scn->target_type) {
 		default:
