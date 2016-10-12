@@ -325,7 +325,9 @@ CONFIG_QCA_SINGLE_BINARY_SUPPORT := 0
 CONFIG_TARGET_RAMDUMP_AFTER_KERNEL_PANIC := 1
 
 #Flag to enable/disable secure firmware feature
-CONFIG_CNSS_SECURE_FW := n
+ifeq ($(BOARD_PLATFORM),msm8996)
+CONFIG_CNSS_SECURE_FW := y
+endif
 
 #Flag to enable Stats Ext implementation
 CONFIG_FEATURE_STATS_EXT := 1
