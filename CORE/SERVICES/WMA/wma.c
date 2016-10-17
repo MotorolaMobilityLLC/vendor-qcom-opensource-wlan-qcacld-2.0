@@ -35812,6 +35812,11 @@ static int wma_update_fw_tdls_state(WMA_HANDLE handle, void *pwmaTdlsparams)
 		cmd->state = WMI_TDLS_ENABLE_ACTIVE;
 	} else if (WMA_TDLS_SUPPORT_ACTIVE_EXTERNAL_CONTROL == tdls_mode) {
 		cmd->state = WMI_TDLS_ENABLE_ACTIVE_EXTERNAL_CONTROL;
+#if defined(CONFIG_MSM8992) || defined(CONFIG_MSM8994)//IKSWN-6386: Unable to set tdls up
+                /*MSM8992 and MSM8994 uses RM 2.0 which doesnt support external trigger,
+                 hence force to use ACTIVE similar to in M/L driver*/
+                cmd->state = WMI_TDLS_ENABLE_ACTIVE;
+#endif
 	} else {
 		cmd->state = WMI_TDLS_DISABLE;
 	}
