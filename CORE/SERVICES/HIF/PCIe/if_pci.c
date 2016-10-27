@@ -2722,6 +2722,32 @@ void hif_pci_crash_shutdown(struct pci_dev *pdev)
 
 #define OL_ATH_PCI_PM_CONTROL 0x44
 
+/**
+ * hif_disable_tasklet() - API to disable tasklet
+ * @sc: HIF Context
+ * @wma_hdl: WMA Handle
+ *
+ * Return: None
+ */
+static void hif_disable_tasklet(struct hif_pci_softc *sc, void *wma_hdl)
+{
+	if (!wma_get_client_count(wma_hdl))
+		tasklet_disable(&sc->intr_tq);
+}
+
+/**
+ * hif_enable_tasklet() - API to enable tasklet
+ * @sc: HIF Context
+ * @wma_hdl: WMA Handle
+ *
+ * Return: None
+ */
+static void hif_enable_tasklet(struct hif_pci_softc *sc, void *wma_hdl)
+{
+	if (!wma_get_client_count(wma_hdl))
+		tasklet_enable(&sc->intr_tq);
+}
+
 static int
 __hif_pci_suspend(struct pci_dev *pdev, pm_message_t state, bool runtime_pm)
 {
@@ -2799,7 +2825,7 @@ __hif_pci_suspend(struct pci_dev *pdev, pm_message_t state, bool runtime_pm)
         msleep(10);
     }
 
-    tasklet_disable(&sc->intr_tq);
+    hif_disable_tasklet(sc, temp_module);
     hif_irq_record(HIF_SUSPEND_AFTER_WOW, sc);
 
 #ifdef FEATURE_WLAN_D0WOW
@@ -3025,7 +3051,7 @@ skip:
         goto out;
     }
 
-    tasklet_enable(&sc->intr_tq);
+    hif_enable_tasklet(sc, temp_module);
 
     if (!wma_is_wow_mode_selected(temp_module))
         err = wma_resume_target(temp_module, runtime_pm);
