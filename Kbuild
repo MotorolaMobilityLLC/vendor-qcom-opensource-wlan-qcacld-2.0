@@ -325,7 +325,7 @@ CONFIG_QCA_SINGLE_BINARY_SUPPORT := 0
 CONFIG_TARGET_RAMDUMP_AFTER_KERNEL_PANIC := 1
 
 #Flag to enable/disable secure firmware feature
-ifeq ($(BOARD_PLATFORM),msm8996)
+ifeq ($(filter $(BOARD_PLATFORM), msm8996 msm8994) ,$(BOARD_PLATFORM))
 CONFIG_CNSS_SECURE_FW := y
 endif
 
